@@ -37,6 +37,12 @@ jobs:
       - name: Scan bundled demo site
         run: node dist/cli.js demo --out site --no-open -q
 
+      # Traces record raw network traffic (incl. unredacted URLs) — private
+      # evidence, never published to GitHub Pages. Screenshots of the public
+      # demo site stay.
+      - name: Strip private evidence
+        run: rm -rf site/artifacts/traces
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
 

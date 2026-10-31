@@ -37,6 +37,12 @@ jobs:
         if: matrix.node == 22
         run: node dist/cli.js demo --out demo-report --no-open -q
 
+      # Traces record raw network traffic (incl. unredacted URLs) — private
+      # evidence, never uploaded. Screenshots of the public demo site stay.
+      - name: Strip private evidence (Node 22 only)
+        if: matrix.node == 22
+        run: rm -rf demo-report/artifacts/traces
+
       - name: Upload demo report artifact
         if: matrix.node == 22
         uses: actions/upload-artifact@v4
