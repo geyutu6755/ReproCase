@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Clean page 1 — ReproCase demo</title>
+  <link rel="stylesheet" href="./site.css">
+</head>
+<body>
+  <div class="container">
+    <h1><span class="badge ok">clean control</span> Clean page 1</h1>
+    <p>
+      This page is a control sample: it loads fine, its resources load fine, its links work and it
+      contains no JavaScript faults. A ReproCase scan entering here must report <b>zero findings</b>.
+    </p>
+    <nav>
+      <a href="./clean-2.html">Continue to clean page 2</a>
+    </nav>
+    <div class="card">
+      <p>Everything on this page behaves. The button below only toggles a highlight class.</p>
+      <button id="toggle-btn" type="button">Toggle highlight</button>
+    </div>
+  </div>
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      document.getElementById('toggle-btn').addEventListener('click', function () {
+        this.classList.toggle('highlight');
+      });
+    });
+  </script>
+</body>
+</html>

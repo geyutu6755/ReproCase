@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Broken link demo — ReproCase demo</title>
+  <link rel="stylesheet" href="./site.css">
+</head>
+<body>
+  <div class="container">
+    <h1><span class="badge">planted fault #2</span> Broken internal link</h1>
+    <p>
+      The link below points at <code>./missing-page.html</code>, which does not exist on this
+      server. ReproCase re-requests every discovered internal link and reports any non-2xx/3xx
+      response as a broken-internal-link finding, with the linking page as evidence.
+    </p>
+    <div class="card">
+      <nav>
+        <a href="./missing-page.html">Open a page that does not exist</a>
+      </nav>
+    </div>
+    <nav><a href="./index.html">Back to index</a></nav>
+  </div>
+</body>
+</html>

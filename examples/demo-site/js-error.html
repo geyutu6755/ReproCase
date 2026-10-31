@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>JS exception demo — ReproCase demo</title>
+  <link rel="stylesheet" href="./site.css">
+</head>
+<body>
+  <div class="container">
+    <h1><span class="badge">planted fault #1</span> Uncaught JS exception on click</h1>
+    <p>
+      The button below throws an uncaught <code>Error</code> inside its click handler.
+      ReproCase detects the resulting <code>pageerror</code>, records the exact action path,
+      independently re-verifies it and generates a Playwright test that reproduces it.
+    </p>
+    <div class="card">
+      <button id="crash-btn" type="button">Trigger JavaScript error</button>
+      <button id="hello-btn" type="button">Say hello (harmless)</button>
+      <p id="hello-out" role="status"></p>
+    </div>
+    <nav><a href="./index.html">Back to index</a></nav>
+  </div>
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      document.getElementById('crash-btn').addEventListener('click', function () {
+        throw new Error('Boom: intentional demo crash (ReproCase demo fault #1)');
+      });
+      document.getElementById('hello-btn').addEventListener('click', function () {
+        document.getElementById('hello-out').textContent =
+          'Hello from the demo site at ' + new Date().toLocaleTimeString();
+      });
+    });
+  </script>
+</body>
+</html>

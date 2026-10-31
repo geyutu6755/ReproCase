@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ReproCase demo site</title>
+  <link rel="stylesheet" href="./site.css">
+</head>
+<body>
+  <div class="container">
+    <h1>ReproCase demo site</h1>
+    <p>
+      This small static site exists to demonstrate ReproCase. It intentionally contains
+      <b>four planted, fully reproducible faults</b> plus <b>two clean control pages</b> that must not
+      produce any findings. Every fault is deterministic, so a scan finds all of them every time.
+    </p>
+
+    <div class="card">
+      <h2>Clean pages (control group)</h2>
+      <nav>
+        <a href="./clean.html">Clean page 1 — no faults</a>
+        <a href="./clean-2.html">Clean page 2 — no faults</a>
+      </nav>
+      <p>Scanning <code>clean.html</code> as the entry point should finish with <b>zero findings</b>.</p>
+    </div>
+
+    <div class="card">
+      <h2>Pages with planted faults</h2>
+      <nav>
+        <a href="./js-error.html">Fault 1 — uncaught JS exception on button click</a>
+        <a href="./broken-link.html">Fault 2 — internal link to a missing page</a>
+        <a href="./overflow.html">Fault 3 — horizontal overflow on mobile</a>
+        <a href="./broken-image.html">Fault 4 — first-party image returns 404</a>
+      </nav>
+      <p>Scanning from this index page should detect all four faults and verify each one independently.</p>
+    </div>
+
+    <p class="muted">This site is served by <code>reprocase demo</code> and used by the integration test suite.</p>
+  </div>
+</body>
+</html>

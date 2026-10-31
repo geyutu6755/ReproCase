@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mobile overflow demo — ReproCase demo</title>
+  <link rel="stylesheet" href="./site.css">
+</head>
+<body>
+  <div class="container">
+    <h1><span class="badge">planted fault #3</span> Horizontal overflow on mobile</h1>
+    <p>
+      The panel below has a fixed width of <code>720px</code> and is not wrapped in a scrollable
+      container. On a desktop viewport (1280px) it fits; on a typical phone viewport (390px) it
+      forces the whole document to scroll sideways. ReproCase measures
+      <code>scrollWidth</code> vs <code>clientWidth</code> at both viewports and locates the
+      offending elements.
+    </p>
+    <div class="wide-panel">720px fixed-width panel — overflows phones, fits desktops</div>
+    <nav><a href="./index.html">Back to index</a></nav>
+  </div>
+</body>
+</html>

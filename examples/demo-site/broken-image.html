@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Broken image demo — ReproCase demo</title>
+  <link rel="stylesheet" href="./site.css">
+</head>
+<body>
+  <div class="container">
+    <h1><span class="badge">planted fault #4</span> First-party resource returns 404</h1>
+    <p>
+      The first image references <code>./assets/missing-logo.png</code>, which the server does not
+      have, so the request fails with HTTP 404. The second image is a real asset and loads fine.
+      ReproCase reports first-party resource failures (and deliberately ignores third-party ones).
+    </p>
+    <div class="card">
+      <p>Broken image (404):</p>
+      <img class="demo" src="./assets/missing-logo.png" alt="Missing logo" width="220" height="110">
+      <p>Working image:</p>
+      <img class="demo" src="./assets/logo.svg" alt="Demo site logo" width="220" height="110">
+    </div>
+    <nav><a href="./index.html">Back to index</a></nav>
+  </div>
+</body>
+</html>
