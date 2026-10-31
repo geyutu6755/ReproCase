@@ -42,6 +42,9 @@ See [reprocase.config.example.json](../reprocase.config.example.json) for a copy
 
   // Evidence capture. traces:"auto" captures Playwright traces for localhost
   // targets only; set true/false to override.
+  // NOTE: traces record raw network traffic (including unredacted URLs and
+  // query strings) and screenshots capture raw page content — neither can be
+  // reliably auto-redacted. Review evidence files before sharing them publicly.
   "capture": {
     "screenshots": true,
     "traces": "auto"

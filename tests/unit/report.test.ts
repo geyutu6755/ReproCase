@@ -117,4 +117,23 @@ describe('HTML report', () => {
     expect(html).toContain('Not checked');
     expect(html).toContain('Forms');
   });
+
+  it('restricts public sharing of evidence that cannot be auto-redacted (v0.1.1)', () => {
+    // Traces record raw network traffic (including unredacted URLs) and
+    // screenshots capture raw page content; the report must carry an explicit
+    // review-before-sharing warning wherever such artifacts are linked.
+    const html = renderHtml(makeResult());
+    expect(html).toContain('review them before sharing this report publicly');
+    expect(html).toContain('may contain unredacted page content, URLs and query parameters');
+
+    const noEvidence = renderHtml(
+      makeResult({
+        findings: [makeFinding({ screenshots: [], traces: [] })]
+      })
+    );
+    // Footer warning is always present; the per-finding artifact note is tied
+    // to evidence actually being attached.
+    expect(noEvidence).toContain('Review them before sharing this report publicly');
+    expect(noEvidence.match(/review them before sharing this report publicly/g)).toHaveLength(1);
+  });
 });

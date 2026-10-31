@@ -74,6 +74,7 @@ pre.evidence { background: #0f172a; color: #e2e8f0; border-radius: 8px; padding:
 .shots { display: flex; gap: 10px; flex-wrap: wrap; }
 .shots img { max-width: 260px; max-height: 170px; border: 1px solid var(--line); border-radius: 8px; cursor: zoom-in; background: #fff; }
 .artifacts { font-size: 13px; color: var(--muted); display: flex; flex-direction: column; gap: 3px; margin-top: 8px; }
+.artifacts .privacy-note { color: #92400e; background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; padding: 4px 8px; }
 table.pages { width: 100%; border-collapse: collapse; background: var(--card); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; font-size: 13px; }
 table.pages th, table.pages td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--line); }
 table.pages th { background: #f8fafc; color: var(--muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .4px; }
@@ -273,6 +274,13 @@ const CLIENT_JS = `
         row.appendChild(el('code', null, f.generatedTest));
         arts.push(row);
       }
+      if ((f.traces || []).length || (f.screenshots || []).length) {
+        // Traces record raw network traffic and screenshots capture raw page
+        // content — neither can be reliably redacted automatically, so the
+        // report itself must restrict public sharing (v0.1.1).
+        arts.push(el('span', 'privacy-note',
+          'Privacy: browser traces and screenshots may contain unredacted page content, URLs and query strings — review them before sharing this report publicly.'));
+      }
       if (arts.length) {
         var box = el('div', 'artifacts');
         arts.forEach(function (r) { box.appendChild(r); });
@@ -331,6 +339,8 @@ const CLIENT_JS = `
       ' · ' + (st.pagesVisited || 0) + ' pages, ' + (st.actionsPerformed || 0) + ' interactions, ' +
       (st.requestsObserved || 0) + ' requests observed, ' + (st.linksChecked || 0) + ' links re-checked' +
       ' · ' + (D.finishedAt || '')));
+    f.appendChild(el('div', null,
+      'Evidence files (screenshots, browser traces) may contain unredacted page content, URLs and query parameters. Review them before sharing this report publicly.'));
   }
 
   function openLightbox(src) {

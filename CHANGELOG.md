@@ -4,28 +4,59 @@ All notable changes to ReproCase are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 versioning follows [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [0.1.1] — 2026-11-01
 
-### Fixed — independent v0.1.0 audit ([report](docs/audit-2026-10-31-v0.1.0.md))
+Security-fix release. All changes were produced and verified by the
+[independent v0.1.0 quality audit](docs/audit-2026-10-31-v0.1.0.md); the `v0.1.0`
+tag and release remain unchanged as a historical record.
 
-- **Scope leak (critical):** the scan could visit and report on a *different* application that
-  shares only the loopback host on another port. The scan scope is now pinned to the entry
-  URL's origin (host **and** port).
-- **Exploration coverage (high):** the explorer spent its action budget on navigational header
-  links and left pages before exercising their buttons, causing systematic false negatives on
-  realistic layouts. Exploration now clicks buttons only; `<a>` destinations are traversed by
-  the crawl queue.
-- **Privacy (critical):** query strings containing secrets leaked into `result.json` through
-  reproduction plans and stack traces. URLs and free text are now redacted at the observation
-  source, covering findings, repro plans, generated tests and all reports.
-- **Cross-page attribution (high):** faults observed on a navigation destination inherited the
-  source page's click path, so verification replayed clicks that could not exist there and
+### Security
+
+- **Scan scope leak (critical, D1):** a scan could visit and report on a *different* application
+  that shares only the loopback host on another port (e.g. `localhost:3001` while scanning
+  `localhost:3000`). The scan scope is now pinned to the entry URL's origin: same host **and**
+  same port (`samePort`). Regenerate any reports that were produced against non-localhost
+  targets with v0.1.0.
+- **Secret leakage via repro plans and stack traces (critical, D7):** sensitive query parameter
+  values (token, password, session, email, ...) were redacted in report display fields but
+  leaked verbatim into `plan.url` and `evidence.stack` — reaching `result.json`, the HTML
+  report, GitHub-Issue markdown and generated Playwright tests. URLs and free text are now
+  redacted at the observation source (`redactSecretsInText`).
+- **Evidence sharing restriction (D7 follow-up):** browser traces record raw network traffic
+  (including unredacted URLs and query strings) and screenshots capture raw page content;
+  neither can be reliably auto-redacted. The HTML report now carries an explicit
+  "review before sharing publicly" warning wherever such artifacts are attached, the report
+  footer states it, and README/docs call it out. Review evidence files before publishing any
+  report.
+
+### Fixed
+
+- **Exploration coverage (high, D2/D6):** the explorer spent its action budget on navigational
+  header links and left pages before exercising their buttons, causing systematic false
+  negatives on realistic layouts. Exploration now clicks buttons only; `<a>` destinations are
+  traversed by the crawl queue (`allowedActions.clickLinks` gates that traversal).
+- **Cross-page attribution (high, D5):** faults observed on a navigation destination inherited
+  the source page's click path, so verification replayed clicks that could not exist there and
   demoted reproducible faults to `suspected`.
-- **Overflow replay (high):** overflow verification and generated tests ignored recorded click
-  steps, so interaction-injected overflow could not be reproduced.
-- **Accuracy (low):** page records now show the final redirect-resolved URL.
+- **Overflow replay (high, D8):** overflow verification and generated tests ignored recorded
+  click steps, so interaction-injected overflow could not be reproduced.
+- **Accuracy (low, D3):** page records show the final redirect-resolved URL.
 - **Deps:** vitest 2 → 5 clears 6 npm-audit advisories (2 critical, dev-dependency only);
-  full suite green on vitest 5.
+  `npm audit` reports 0 vulnerabilities. Full suite green on vitest 5.
+
+### Still true (documented limitations)
+
+- The risky-keyword deny-list is deliberately conservative: harmless buttons whose labels
+  contain words like "run" are skipped (D4). Configurability is planned for v0.2.0.
+- Forms are never exercised; authenticated pages are out of reach; third-party resource
+  failures are observed but not reported.
+- Trace archives cannot be auto-redacted — treat them (and screenshots) as sensitive by default.
+
+### Verification
+
+67/67 tests (49 unit + 18 integration/e2e incl. real-browser scans), red/green verification of
+generated tests (GREEN 2/2 → RED 2/2 correctly failed → SWAP 2/2), full-artifact privacy sweep
+(0 secrets in JSON/HTML/Markdown/specs; traces documented as restricted), npm audit 0.
 
 ## [0.1.0] — 2026-10-31
 
@@ -74,4 +105,5 @@ First verified release.
 - No accessibility, performance, or visual-regression coverage beyond horizontal overflow.
 - Single-browser (Chromium) at this stage; Firefox/WebKit untested.
 
+[0.1.1]: https://github.com/geyutu6755/ReproCase/releases/tag/v0.1.1
 [0.1.0]: https://github.com/geyutu6755/ReproCase/releases/tag/v0.1.0

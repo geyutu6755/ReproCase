@@ -72,8 +72,9 @@ the commented-out "after fix" assertion, turning the file into a permanent regre
   risky-looking buttons (pay / delete / submit / send / ...) are never clicked.
 - Hard budgets: max pages, max depth, max actions per page, run timeout, request delay. No infinite crawling.
 - URLs in reports are redacted (token / password / email / session query params masked).
-- Traces are captured automatically for localhost targets only; screenshots may contain page
-  content — review them before sharing publicly.
+- Traces are captured automatically for localhost targets only. **Traces and screenshots may
+  contain unredacted page content, URLs and query parameters — review them before sharing
+  this report publicly.**
 
 See [docs/architecture.md](docs/architecture.md) for the full model.
 
@@ -101,8 +102,10 @@ fault through the real Playwright runner.
 
 ## Status
 
-v0.1.0 — first verified release. Known limitations are listed in the changelog and in the
-"Not checked" section of every report.
+v0.1.1 — security-fix release (scan scope pinning, source-level redaction of plans/stacks,
+exploration coverage fixes, evidence-sharing warnings). See the
+[changelog](CHANGELOG.md) and the [independent audit report](docs/audit-2026-10-31-v0.1.0.md).
+Known limitations are listed in the changelog and in the "Not checked" section of every report.
 
 ## License
 
