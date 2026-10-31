@@ -10,7 +10,7 @@ import {
   UNHANDLED_REJECTION_SCRIPT,
   type CandidateInfo
 } from './util/selectors.js';
-import { firstLine, hostnameOf, isLocalhostHost, normalizeUrl, redactUrl, sha1Short, sleep } from './util/net.js';
+import { firstLine, hostnameOf, isLocalhostHost, normalizeUrl, redactSecretsInText, redactUrl, samePort, sha1Short, sleep } from './util/net.js';
 import { domainAllowed } from './config.js';
 import { verifyFindings } from './verify.js';
 import { log } from './util/log.js';
@@ -106,7 +106,9 @@ export class Scanner {
   }
 
   private isFirstParty(url: string): boolean {
-    return domainAllowed(hostnameOf(url), this.firstPartyDomains());
+    if (!domainAllowed(hostnameOf(url), this.firstPartyDomains())) return false;
+    // Same host but different port (or protocol) = different application.
+    return samePort(this.cfg.entry, url);
   }
 
   private tracesEnabled(): boolean {
@@ -185,8 +187,36 @@ export class Scanner {
     const pageFingerprints = new Set<string>();
     let sawFinding = false;
     const stepsBox: { steps: Step[] } = { steps: [] };
+    // The page the recorded click path belongs to. After a navigation the
+    // pending observations belong to the DESTINATION page, so replaying the
+    // previous page's clicks there would be invalid (audit finding D5).
+    const stepsOriginUrl: { current: string } = { current: normalizeUrl(url) };
 
     const obs: ObserveFn = async (input) => {
+      // Redact at the source, before anything can reach a finding, a repro
+      // plan, a generated test or a report: query strings ride along in page
+      // URLs, resource URLs and stack traces alike (audit finding D7).
+      const safeInput: Omit<ObservationInput, 'screenshot'> = {
+        type: input.type,
+        url: redactUrl(normalizeUrl(input.url), cfg.report.redactQuery),
+        targetUrl: input.targetUrl
+          ? redactUrl(normalizeUrl(input.targetUrl), cfg.report.redactQuery)
+          : undefined,
+        evidence: {
+          ...input.evidence,
+          message: input.evidence.message ? redactSecretsInText(input.evidence.message) : undefined,
+          stack: input.evidence.stack ? redactSecretsInText(input.evidence.stack) : undefined,
+          failureText: input.evidence.failureText
+            ? redactSecretsInText(input.evidence.failureText)
+            : undefined,
+          resourceUrl: input.evidence.resourceUrl
+            ? redactUrl(normalizeUrl(input.evidence.resourceUrl), cfg.report.redactQuery)
+            : undefined
+        },
+        // Observations that fired on a page other than the one the recorded
+        // clicks belong to must not inherit that click path.
+        steps: normalizeUrl(input.url) === stepsOriginUrl.current ? input.steps : []
+      };
       let screenshot: string | undefined;
       if (cfg.capture.screenshots) {
         try {
@@ -201,7 +231,7 @@ export class Scanner {
           // Page may be mid-navigation or already closing; evidence is best-effort here.
         }
       }
-      const { finding } = this.collector.observe({ ...input, screenshot });
+      const { finding } = this.collector.observe({ ...safeInput, screenshot });
       sawFinding = true;
       pageFingerprints.add(finding.fingerprint);
       if (input.type === 'js-exception') record.jsErrors++;
@@ -275,7 +305,12 @@ export class Scanner {
     let loaded = false;
     try {
       const resp = await page.goto(url, { waitUntil: 'load', timeout: cfg.navigationTimeoutMs });
-      if (resp) record.status = resp.status();
+      if (resp) {
+        record.status = resp.status();
+        // Record the URL the browser actually landed on (redirects resolved),
+        // not just the URL that was requested.
+        record.url = redactUrl(normalizeUrl(resp.url()), cfg.report.redactQuery);
+      }
       loaded = true;
     } catch (e) {
       const msg = firstLine((e as Error)?.message ?? String(e));
@@ -327,12 +362,14 @@ export class Scanner {
         if (sources.size < MAX_SOURCES_PER_TARGET) {
           sources.add(redactUrl(normalizeUrl(page.url()), cfg.report.redactQuery));
         }
-        enqueue(target, depth + 1);
+        // Link destinations are traversed by the crawl queue (gated here);
+        // broken-link checking below happens regardless of this flag.
+        if (cfg.allowedActions.clickLinks) enqueue(target, depth + 1);
       }
 
       // Mobile viewport overflow check — run BEFORE exploration so an
       // exploratory navigation cannot move the measurement to another page.
-      const measureOverflowAt = async (viewport: 'desktop' | 'mobile'): Promise<void> => {
+      const measureOverflowAt = async (viewport: 'desktop' | 'mobile', steps: Step[]): Promise<void> => {
         await page.setViewportSize(
           viewport === 'mobile' ? { ...cfg.viewports.mobile } : { ...cfg.viewports.desktop }
         );
@@ -348,21 +385,22 @@ export class Scanner {
               clientWidth: m.clientWidth,
               offenders: m.offenders
             },
-            steps: []
+            steps
           });
         }
       };
-      await measureOverflowAt('mobile');
+      await measureOverflowAt('mobile', []);
       await page.setViewportSize({ ...cfg.viewports.desktop });
       await page.waitForTimeout(150);
 
-      await this.explorePage(page, record, stepsBox, obs, deadline, depth, enqueue);
-      await this.pollRejections(page, stepsBox.steps, obs);
+      await this.explorePage(page, record, stepsBox, stepsOriginUrl, obs, deadline, depth, enqueue);
+      await this.pollRejections(page, stepsBox, stepsOriginUrl, obs);
 
       // If exploration stayed on this page, re-check mobile overflow once —
-      // interaction-injected content can overflow at phone widths only.
+      // interaction-injected content can overflow at phone widths only. The
+      // recorded click path is part of this finding's reproduction plan.
       if (normalizeUrl(page.url()) === normalizeUrl(url) && Date.now() <= deadline) {
-        await measureOverflowAt('mobile');
+        await measureOverflowAt('mobile', [...stepsBox.steps]);
         await page.setViewportSize({ ...cfg.viewports.desktop });
       }
     }
@@ -386,42 +424,42 @@ export class Scanner {
     return record;
   }
 
-  /** Safe, read-only-first interaction exploration. */
+  /**
+   * Safe, read-only-first interaction exploration.
+   *
+   * Buttons only: <a> destinations are traversed by the crawl queue, and
+   * clicking navigational links (header navs!) would abandon the page before
+   * its buttons are ever tried — the audit found exactly that systematic
+   * false-negative (findings D2/D6). A button that navigates (e.g.
+   * location.href) still enqueues its destination before the loop breaks.
+   */
   private async explorePage(
     page: Page,
     record: PageRecord,
     stepsBox: { steps: Step[] },
+    stepsOriginUrl: { current: string },
     obs: ObserveFn,
     deadline: number,
     depth: number,
     enqueue: (rawUrl: string, depth: number) => void
   ): Promise<void> {
     const cfg = this.cfg;
-    if (!cfg.allowedActions.clickLinks && !cfg.allowedActions.clickButtons) return;
+    if (!cfg.allowedActions.clickButtons) return;
     if (cfg.maxActionsPerPage === 0) return;
 
     let candidates: CandidateInfo[] = await page
       .evaluate(collectCandidatesInPage, 200)
       .catch((): CandidateInfo[] => []);
-    candidates = candidates
-      .filter((c) => (c.kind === 'link' ? cfg.allowedActions.clickLinks : cfg.allowedActions.clickButtons))
-      .slice(0, cfg.maxActionsPerPage);
+    candidates = candidates.filter((c) => c.kind === 'button');
+    candidates = candidates.slice(0, cfg.maxActionsPerPage);
 
     for (const cand of candidates) {
       if (Date.now() > deadline) break;
-      const step: Step =
-        cand.kind === 'link'
-          ? {
-              action: 'click',
-              description: `click link "${cand.text || cand.href}"`,
-              selector: cand.selector,
-              url: cand.href
-            }
-          : {
-              action: 'click',
-              description: `click button "${cand.text || cand.selector}"`,
-              selector: cand.selector
-            };
+      const step: Step = {
+        action: 'click',
+        description: `click button "${cand.text || cand.selector}"`,
+        selector: cand.selector
+      };
       const before = normalizeUrl(page.url());
       stepsBox.steps = [...stepsBox.steps, step];
       try {
@@ -436,7 +474,18 @@ export class Scanner {
 
       await page.waitForTimeout(400 + cfg.requestDelayMs).catch(() => undefined);
       await page.waitForLoadState('load', { timeout: 5000 }).catch(() => undefined);
-      await this.pollRejections(page, stepsBox.steps, obs);
+
+      if (normalizeUrl(page.url()) !== before) {
+        // The button navigated to a new page. From here on observations belong
+        // to the destination, so the previous page's click path no longer
+        // applies (audit finding D5).
+        stepsOriginUrl.current = normalizeUrl(page.url());
+        stepsBox.steps = [];
+        enqueue(page.url(), depth + 1);
+        break;
+      }
+
+      await this.pollRejections(page, stepsBox, stepsOriginUrl, obs);
 
       const m = await page.evaluate(measureOverflowInPage, OVERFLOW_TOLERANCE_PX).catch(() => undefined);
       if (m?.overflow) {
@@ -452,16 +501,15 @@ export class Scanner {
           steps: [...stepsBox.steps]
         });
       }
-
-      if (normalizeUrl(page.url()) !== before) {
-        // Navigational click: let the BFS queue handle the destination page.
-        enqueue(page.url(), depth + 1);
-        break;
-      }
     }
   }
 
-  private async pollRejections(page: Page, steps: Step[], obs: ObserveFn): Promise<void> {
+  private async pollRejections(
+    page: Page,
+    stepsBox: { steps: Step[] },
+    stepsOriginUrl: { current: string },
+    obs: ObserveFn
+  ): Promise<void> {
     const rejections = await page
       .evaluate(
         () =>
@@ -469,12 +517,13 @@ export class Scanner {
             .__reprocaseRejections?.splice(0) ?? []
       )
       .catch((): { reason: string; stack: string }[] => []);
+    const steps = normalizeUrl(page.url()) === stepsOriginUrl.current ? [...stepsBox.steps] : [];
     for (const rej of rejections) {
       await obs({
         type: 'js-exception',
         url: page.url(),
         evidence: { message: rej.reason, stack: rej.stack || undefined },
-        steps: [...steps]
+        steps
       });
     }
   }
