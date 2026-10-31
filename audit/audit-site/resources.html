@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TaskFlow Assets — resource faults</title>
+  <link rel="stylesheet" href="./audit.css">
+</head>
+<body>
+  <header class="app"><div class="container"><span class="logo">TaskFlow</span>
+    <nav><a href="./index.html">Home</a></nav>
+  </div></header>
+  <div class="container">
+    <h1>Assets lab</h1>
+    <div class="panel">
+      <h2>Static failures (on load)</h2>
+      <p>A stylesheet and an image that do not exist on this server (HTTP 404), plus one working asset.</p>
+      <img class="demo" src="./missing-audit-img.png" alt="Missing chart" width="200" height="100">
+      <img class="demo" src="./assets/taskflow.svg" alt="TaskFlow diagram" width="220" height="110">
+    </div>
+    <div class="panel">
+      <h2>Dynamic failure (on click)</h2>
+      <p>Injects an image pointing at a missing file <b>after</b> user interaction — the scanner must
+      capture it with the click in the reproduction steps.</p>
+      <button id="audit-inject-img" type="button">Load avatar</button>
+      <div id="audit-avatar-slot"></div>
+    </div>
+  </div>
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      document.getElementById('audit-inject-img').addEventListener('click', function () {
+        var img = document.createElement('img');
+        img.src = './missing-dynamic.png';
+        img.alt = 'Avatar';
+        img.width = 160;
+        img.height = 80;
+        document.getElementById('audit-avatar-slot').appendChild(img);
+      });
+    });
+  </script>
+</body>
+</html>

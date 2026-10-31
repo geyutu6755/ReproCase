@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Legacy Admin (different app)</title>
+</head>
+<body>
+  <div style="font-family: system-ui, sans-serif; padding: 20px;">
+    <h1>Legacy admin</h1>
+    <p>A completely separate application that happens to share the loopback host but runs on its own
+    port. If a scan of the TaskFlow app ever loads this page, that is an access-scope violation —
+    this page announces itself via the console on load.</p>
+    <img src="./outside-missing.png" alt="missing asset" width="120" height="60">
+  </div>
+  <script>
+    console.error('OUTSIDE_SCOPE_VISITED (audit tripwire — scanner left the target origin scope!)');
+  </script>
+</body>
+</html>

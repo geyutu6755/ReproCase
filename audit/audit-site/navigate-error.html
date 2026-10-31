@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TaskFlow Deploy — navigates away</title>
+  <link rel="stylesheet" href="./audit.css">
+</head>
+<body>
+  <header class="app"><div class="container"><span class="logo">TaskFlow</span>
+    <nav><a href="./index.html">Home</a></nav>
+  </div></header>
+  <div class="container">
+    <h1>Deploy trigger</h1>
+    <div class="panel">
+      <p>The button performs a real cross-page navigation (carrying session-ish query parameters)
+      to a page that fails after hydration. The scanner must follow the navigation, queue the
+      destination, and report the delayed exception — with the query string redacted.</p>
+      <button id="audit-nav" type="button">Open deployment detail</button>
+      <p class="status" id="audit-nav-out"></p>
+    </div>
+  </div>
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      document.getElementById('audit-nav').addEventListener('click', function () {
+        document.getElementById('audit-nav-out').textContent = 'Navigating…';
+        window.location.href = './error-on-load.html?token=supersecret123&session=abc&safe=ok';
+      });
+    });
+  </script>
+</body>
+</html>

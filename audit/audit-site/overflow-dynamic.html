@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TaskFlow Report builder — dynamic overflow</title>
+  <link rel="stylesheet" href="./audit.css">
+</head>
+<body>
+  <header class="app"><div class="container"><span class="logo">TaskFlow</span>
+    <nav><a href="./index.html">Home</a></nav>
+  </div></header>
+  <div class="container">
+    <h1>Report builder</h1>
+    <div class="panel">
+      <p>Clicking the button injects a <code>900px</code>-wide panel. The page has <b>no</b> static
+      overflow, so the fault only exists after the interaction — and only at phone widths.</p>
+      <button id="audit-inject-wide" type="button">Render full-width report</button>
+      <div id="audit-report-slot"></div>
+    </div>
+  </div>
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      document.getElementById('audit-inject-wide').addEventListener('click', function () {
+        var panel = document.createElement('div');
+        panel.style.cssText = 'width:900px;height:110px;background:#dfe6ff;border:2px solid #7d8ede;border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:600;color:#24315e;';
+        panel.textContent = '900px report canvas — fits desktops, breaks phones';
+        document.getElementById('audit-report-slot').appendChild(panel);
+      });
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TaskFlow Pipelines — pushState mini-app</title>
+  <link rel="stylesheet" href="./audit.css">
+</head>
+<body>
+  <header class="app"><div class="container"><span class="logo">TaskFlow</span>
+    <nav><a href="./index.html">Home</a></nav>
+  </div></header>
+  <div class="container">
+    <h1>Pipelines</h1>
+    <div class="panel">
+      <p>History-API navigation: these links call <code>preventDefault()</code> and
+      <code>history.pushState()</code>, changing the URL without a document load. The audit server
+      serves this same document for <code>/app/*</code> paths (proper SPA hosting), so deep links
+      must not produce findings — at most a re-render on direct open.</p>
+      <p>
+        <a href="/app/route1" id="spa-route1" class="btn">Open pipeline A</a>
+        <a href="/app/route2" id="spa-route2" class="btn">Open pipeline B</a>
+      </p>
+      <p class="status" id="spa-view">Overview</p>
+    </div>
+  </div>
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      function go(path, label) {
+        return function (e) {
+          e.preventDefault();
+          history.pushState({}, '', path);
+          document.getElementById('spa-view').textContent = label + ' (client-side view)';
+        };
+      }
+      document.getElementById('spa-route1').addEventListener('click', go('/app/route1', 'Pipeline A'));
+      document.getElementById('spa-route2').addEventListener('click', go('/app/route2', 'Pipeline B'));
+      window.addEventListener('popstate', function () {
+        document.getElementById('spa-view').textContent = 'Overview (restored)';
+      });
+    });
+  </script>
+</body>
+</html>

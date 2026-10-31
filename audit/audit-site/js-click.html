@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TaskFlow Actions — click faults</title>
+  <link rel="stylesheet" href="./audit.css">
+</head>
+<body>
+  <header class="app"><div class="container"><span class="logo">TaskFlow</span>
+    <nav><a href="./index.html">Home</a></nav>
+  </div></header>
+  <div class="container">
+    <h1>Actions lab</h1>
+    <div class="panel">
+      <h2>Synchronous crash</h2>
+      <p>Throws an uncaught <code>Error</code> in the click handler.</p>
+      <button id="audit-crash" type="button">Trigger batch action</button>
+    </div>
+    <div class="panel">
+      <h2>Deliberate console error</h2>
+      <p>Calls <code>console.error</code> without throwing (informational by design in ReproCase).</p>
+      <button id="audit-console-error" type="button">Emit console error</button>
+    </div>
+    <div class="panel">
+      <h2>Harmless</h2>
+      <button id="audit-hello" type="button">Greet</button>
+      <p class="status" id="audit-out"></p>
+    </div>
+  </div>
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      document.getElementById('audit-crash').addEventListener('click', function () {
+        throw new Error('AuditSyncBoom: crash after click (audit fault)');
+      });
+      document.getElementById('audit-console-error').addEventListener('click', function () {
+        console.error('AuditConsoleError: deliberate console.error on click (audit signal)');
+      });
+      document.getElementById('audit-hello').addEventListener('click', function () {
+        document.getElementById('audit-out').textContent = 'Hello at ' + new Date().toLocaleTimeString();
+      });
+    });
+  </script>
+</body>
+</html>

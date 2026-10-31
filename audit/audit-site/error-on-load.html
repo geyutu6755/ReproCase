@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TaskFlow — destination page</title>
+  <link rel="stylesheet" href="./audit.css">
+</head>
+<body>
+  <header class="app"><div class="container"><span class="logo">TaskFlow</span>
+    <nav><a href="./index.html">Home</a></nav>
+  </div></header>
+  <div class="container">
+    <h1>Destination page</h1>
+    <p>This page throws <b>on its own</b> a moment after load. It is normally reached by clicking a
+    button on <code>navigate-error.html</code>, but a scan must also find the fault when it opens
+    this URL directly — including the private query parameters carried over from the navigation.</p>
+  </div>
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      setTimeout(function () {
+        throw new Error('AuditAutoBoom: failure after delayed hydration (audit fault)');
+      }, 250);
+    });
+  </script>
+</body>
+</html>
