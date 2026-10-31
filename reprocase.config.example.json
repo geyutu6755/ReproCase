@@ -1,0 +1,30 @@
+{
+  "$comment": "Copy to reprocase.config.json and adjust. All keys optional except entry.",
+  "entry": "http://127.0.0.1:3000/",
+  "allowedDomains": [],
+  "maxPages": 25,
+  "maxDepth": 3,
+  "maxActionsPerPage": 10,
+  "navigationTimeoutMs": 15000,
+  "runTimeoutMs": 300000,
+  "requestDelayMs": 150,
+  "viewports": {
+    "desktop": { "width": 1280, "height": 720 },
+    "mobile": { "width": 390, "height": 844 }
+  },
+  "allowedActions": {
+    "clickLinks": true,
+    "clickButtons": true,
+    "fillForms": false
+  },
+  "capture": {
+    "screenshots": true,
+    "traces": "auto"
+  },
+  "verification": {
+    "attempts": 3
+  },
+  "report": {
+    "redactQuery": true
+  }
+}
