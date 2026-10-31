@@ -101,9 +101,11 @@ async function attemptRepro(
 
     // plan.kind === 'overflow'
     await page.goto(plan.url, { waitUntil: 'load', timeout: cfg.navigationTimeoutMs }).catch(() => undefined);
+    // Interaction-injected overflow needs the recorded clicks replayed first.
+    const stepsOk = await replaySteps(page, plan.steps ?? []);
     await page.waitForTimeout(400);
     const m = await page.evaluate(measureOverflowInPage, OVERFLOW_TOLERANCE_PX).catch(() => undefined);
-    const ok = m?.overflow === true;
+    const ok = stepsOk && m?.overflow === true;
     if (ok) await screenshot(page, outDir, finding.id);
     return ok;
   } finally {

@@ -1,0 +1,29 @@
+/* TaskFlow audit-site styles — fully responsive, no horizontal overflow by design. */
+* { box-sizing: border-box; }
+body { margin: 0; font-family: "Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-serif; background: #f4f5fb; color: #1c2333; }
+.container { max-width: 880px; margin: 0 auto; padding: 20px 14px 60px; }
+header.app { background: #24315e; color: #fff; padding: 14px 16px; }
+header.app .container { padding: 0 14px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+header.app .logo { font-weight: 700; font-size: 17px; }
+header.app nav { margin-left: auto; display: flex; gap: 6px; flex-wrap: wrap; }
+header.app nav a { color: #cdd8ff; text-decoration: none; font-size: 13px; padding: 4px 8px; border-radius: 6px; }
+header.app nav a:hover { background: #35447f; }
+h1 { font-size: 24px; margin: 10px 0; }
+h2 { font-size: 17px; margin: 0 0 8px; }
+p { line-height: 1.6; }
+.panel { background: #fff; border: 1px solid #dfe3f0; border-radius: 12px; padding: 14px 18px; margin: 14px 0; }
+button { font: inherit; padding: 8px 14px; border-radius: 8px; border: 1px solid #b9c2dd; background: #fff; cursor: pointer; margin: 3px 6px 3px 0; }
+button:hover { border-color: #7d8ede; }
+a.btn { display: inline-block; margin: 4px 8px 4px 0; padding: 8px 12px; background: #fff; border: 1px solid #dfe3f0; border-radius: 8px; color: #3a53c4; text-decoration: none; font-size: 14px; }
+a.btn:hover { border-color: #7d8ede; }
+img.demo { max-width: 100%; height: auto; border-radius: 8px; }
+.status { min-height: 22px; color: #3a53c4; font-size: 14px; }
+.tag { display: inline-block; font-size: 11.5px; padding: 2px 9px; border-radius: 99px; background: #e8ecff; color: #3a53c4; font-weight: 600; }
+.tag.ok { background: #dcf5e7; color: #116d43; }
+.tag.warn { background: #fdeeda; color: #8a5a10; }
+table.tasks { width: 100%; border-collapse: collapse; font-size: 14px; }
+table.tasks th, table.tasks td { text-align: left; padding: 7px 10px; border-bottom: 1px solid #eceff8; }
+pre.log { background: #141a2e; color: #dbe4ff; border-radius: 8px; padding: 10px 12px; font-size: 12.5px; overflow-x: auto; }
+.muted { color: #6b7488; font-size: 13.5px; }
+form .field { margin: 8px 0; }
+input[type="text"], input[type="email"] { font: inherit; padding: 8px 10px; border: 1px solid #b9c2dd; border-radius: 8px; width: 100%; max-width: 340px; }

@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TaskFlow Integrations — out-of-scope links</title>
+  <link rel="stylesheet" href="./audit.css">
+</head>
+<body>
+  <header class="app"><div class="container"><span class="logo">TaskFlow</span>
+    <nav><a href="./index.html">Home</a></nav>
+  </div></header>
+  <div class="container">
+    <h1>Integrations</h1>
+    <div class="panel">
+      <p>The link below points at a <b>different application</b> that happens to run on another port
+      of the same loopback host (<code>127.0.0.1:4641</code>). Two apps on different ports are
+      different sites: the scanner must not visit, click or report on it. (A real-world analogue is
+      any link to a third-party host.)</p>
+      <a href="http://127.0.0.1:4641/outside.html" class="btn">Open legacy admin (other app)</a>
+      <a href="https://example.com/" class="btn" rel="noreferrer">External documentation site</a>
+    </div>
+  </div>
+</body>
+</html>

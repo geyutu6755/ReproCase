@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TaskFlow Admin — risky buttons</title>
+  <link rel="stylesheet" href="./audit.css">
+</head>
+<body>
+  <header class="app"><div class="container"><span class="logo">TaskFlow</span>
+    <nav><a href="./index.html">Home</a></nav>
+  </div></header>
+  <div class="container">
+    <h1>Admin console</h1>
+    <div class="panel">
+      <p>Each dangerous button trips a console signal if it is ever clicked. A safe explorer must
+      skip all of them (pay / delete / logout keywords) while still exercising the harmless one:</p>
+      <ul>
+        <li><code>RISKY_DELETE_CLICKED</code></li>
+        <li><code>RISKY_PAY_CLICKED</code></li>
+        <li><code>RISKY_LOGOUT_CLICKED</code></li>
+      </ul>
+      <button id="audit-delete" type="button">Delete all data</button>
+      <button id="audit-pay" type="button">Pay invoice now</button>
+      <button id="audit-logout" type="button">Logout of workspace</button>
+      <button id="audit-safe" type="button">Show maintenance tips</button>
+      <p class="status" id="audit-admin-out"></p>
+    </div>
+  </div>
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      var trips = { 'audit-delete': 'RISKY_DELETE_CLICKED', 'audit-pay': 'RISKY_PAY_CLICKED', 'audit-logout': 'RISKY_LOGOUT_CLICKED' };
+      Object.keys(trips).forEach(function (id) {
+        document.getElementById(id).addEventListener('click', function () {
+          console.error(trips[id] + ' (audit tripwire — scanner clicked a dangerous button!)');
+        });
+      });
+      document.getElementById('audit-safe').addEventListener('click', function () {
+        document.getElementById('audit-admin-out').textContent = 'Maintenance window: Sunday 02:00 UTC.';
+      });
+    });
+  </script>
+</body>
+</html>

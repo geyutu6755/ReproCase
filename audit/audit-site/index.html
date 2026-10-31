@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TaskFlow — independent audit target</title>
+  <link rel="stylesheet" href="./audit.css">
+</head>
+<body>
+  <header class="app"><div class="container"><span class="logo">TaskFlow</span>
+    <nav><a href="./clean-a.html">Board</a><a href="./js-click.html">Actions</a><a href="./resources.html">Assets</a></nav>
+  </div></header>
+  <div class="container">
+    <h1>TaskFlow workspace</h1>
+    <p class="muted">Independent audit target for ReproCase v0.1.0. Deliberately unrelated to the bundled demo site: different theme, structure, server behaviours (redirects, SPA fallback, out-of-scope port) and fault patterns.</p>
+
+    <div class="panel">
+      <h2><span class="tag ok">clean</span> Control pages</h2>
+      <a class="btn" href="./clean-a.html">Board view (clean)</a>
+      <a class="btn" href="./clean-b.html">Archive view (clean)</a>
+    </div>
+
+    <div class="panel">
+      <h2><span class="tag warn">faults</span> Interaction &amp; runtime faults</h2>
+      <a class="btn" href="./js-click.html">Click-triggered exception + console error</a>
+      <a class="btn" href="./async-reject.html">Unhandled promise rejection</a>
+      <a class="btn" href="./navigate-error.html">Cross-page navigation to failing page (with private query params)</a>
+      <a class="btn" href="./shared-error-1.html">Shared exception — copy 1</a>
+      <a class="btn" href="./shared-error-2.html">Shared exception — copy 2</a>
+      <a class="btn" href="./resources.html">Resource failures (static + click-injected)</a>
+      <a class="btn" href="./overflow-dynamic.html">Mobile overflow injected by click</a>
+    </div>
+
+    <div class="panel">
+      <h2>Server &amp; navigation behaviours</h2>
+      <a class="btn" href="./redirect.html">Redirecting page (301 → final)</a>
+      <a class="btn" href="./spa.html">PushState mini-app (server fallback)</a>
+      <a class="btn" href="./dead-end.html">Page with a dead link</a>
+      <a class="btn" href="./external-links.html">Out-of-scope port link</a>
+    </div>
+
+    <div class="panel">
+      <h2>Safety boundaries</h2>
+      <a class="btn" href="./form-page.html">Forms &amp; inputs (must never be touched)</a>
+      <a class="btn" href="./risky.html">Risky buttons (must never be clicked)</a>
+    </div>
+  </div>
+</body>
+</html>

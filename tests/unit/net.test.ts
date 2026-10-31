@@ -3,10 +3,57 @@ import {
   hostnameOf,
   isLocalhostHost,
   normalizeUrl,
+  redactSecretsInText,
   redactUrl,
+  samePort,
   sha1Short,
   trimStack
 } from '../../src/util/net.js';
+
+describe('redactSecretsInText (query strings inside free text)', () => {
+  it('masks sensitive query values but keeps the rest of the text', () => {
+    const out = redactSecretsInText(
+      'Error at http://127.0.0.1:4640/page.html?token=supersecret123&session=abc&safe=ok threw'
+    );
+    expect(out).not.toContain('supersecret123');
+    expect(out).not.toContain('session=abc');
+    expect(out).toContain('token=***');
+    expect(out).toContain('session=***');
+    expect(out).toContain('safe=ok');
+    expect(out).toContain('page.html?');
+  });
+
+  it('leaves text without query strings untouched', () => {
+    expect(redactSecretsInText('Boom: crash at line 42')).toBe('Boom: crash at line 42');
+  });
+});
+
+describe('samePort (scan scope pinning)', () => {
+  it('keeps the same explicit port in scope', () => {
+    expect(samePort('http://127.0.0.1:4640/', 'http://127.0.0.1:4640/page.html')).toBe(true);
+  });
+
+  it('treats a different port on the same host as out of scope', () => {
+    expect(samePort('http://127.0.0.1:4640/', 'http://127.0.0.1:4641/outside.html')).toBe(false);
+  });
+
+  it('normalizes protocol default ports', () => {
+    expect(samePort('http://example.com/', 'http://example.com/a')).toBe(true);
+    expect(samePort('https://example.com/', 'https://example.com/a')).toBe(true);
+  });
+
+  it('separates http from https on the same host', () => {
+    expect(samePort('http://example.com/', 'https://example.com/')).toBe(false);
+  });
+
+  it('excludes explicit non-default ports when the origin has none', () => {
+    expect(samePort('http://example.com/', 'http://example.com:8080/admin')).toBe(false);
+  });
+
+  it('rejects unparseable URLs', () => {
+    expect(samePort('http://example.com/', '::::')).toBe(false);
+  });
+});
 
 describe('redactUrl', () => {
   it('masks sensitive query parameter values', () => {

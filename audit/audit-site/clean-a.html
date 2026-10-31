@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TaskFlow Board (clean)</title>
+  <link rel="stylesheet" href="./audit.css">
+</head>
+<body>
+  <header class="app"><div class="container"><span class="logo">TaskFlow</span>
+    <nav><a href="./clean-b.html">Archive</a><a href="./index.html">Home</a></nav>
+  </div></header>
+  <div class="container">
+    <h1><span class="tag ok">clean control</span> Board view</h1>
+    <p>This control page logs informational messages and a warning (never <code>console.error</code>), loads a real asset, and contains a working button. A correct scan reports <b>zero findings</b> here.</p>
+    <div class="panel">
+      <table class="tasks">
+        <thead><tr><th>Task</th><th>Owner</th><th>State</th></tr></thead>
+        <tbody>
+          <tr><td>Design review</td><td>Ana</td><td>open</td></tr>
+          <tr><td>Perf pass</td><td>Ravi</td><td>done</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="panel">
+      <img class="demo" src="./assets/taskflow.svg" alt="TaskFlow diagram" width="220" height="110">
+      <button id="shuffle-btn" type="button">Shuffle highlight</button>
+      <p class="status" id="shuffle-out"></p>
+    </div>
+  </div>
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      console.log('TaskFlow board initialized (informational log)');
+      console.warn('TaskFlow: demo dataset is stale (informational warning)');
+      document.getElementById('shuffle-btn').addEventListener('click', function () {
+        document.getElementById('shuffle-out').textContent = 'Shuffled at ' + new Date().toLocaleTimeString();
+      });
+    });
+  </script>
+</body>
+</html>

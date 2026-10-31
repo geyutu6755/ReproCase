@@ -30,8 +30,10 @@ See [reprocase.config.example.json](../reprocase.config.example.json) for a copy
     "mobile": { "width": 390, "height": 844 }
   },
 
-  // Safe-interaction policy. fillForms is OFF by default and prints a warning
-  // when enabled — only use it on sites you own.
+  // Interaction policy. Exploration clicks BUTTONS only — <a> destinations are
+  // traversed by the crawl queue (clickLinks gates that traversal). fillForms
+  // is OFF by default and prints a warning when enabled — only use it on sites
+  // you own.
   "allowedActions": {
     "clickLinks": true,
     "clickButtons": true,
@@ -59,11 +61,18 @@ See [reprocase.config.example.json](../reprocase.config.example.json) for a copy
 - Passively listens for: uncaught exceptions, unhandled rejections, `console.error`,
   failed first-party requests, HTTP ≥ 400 responses.
 - Measures horizontal overflow at the desktop and mobile viewports, and locates the offending elements.
-- Then clicks up to `maxActionsPerPage` **safe candidates**: visible, enabled `<a href>` links and
-  buttons that are not inside a `<form>`, not popups/downloads, and whose text/labels/ids match no
-  risky keyword (pay, delete, submit, send, logout, ...). Navigational clicks enqueue the
-  destination; dialogs are always dismissed.
+- Then clicks up to `maxActionsPerPage` **buttons** — visible, enabled, not inside a `<form>`,
+  no popup/download behaviour, and whose text/labels/ids match no risky keyword
+  (pay, delete, submit, send, logout, ...). Buttons that navigate (e.g. `location.href`)
+  enqueue their destination. `<a href>` links are not clicked during exploration; they are
+  followed by the crawl queue and re-checked over HTTP. Dialogs are always dismissed.
+- The scan scope is pinned to the entry URL's origin: same host **and same port**. A second
+  app on `localhost:3001` is never visited from a scan of `localhost:3000`.
 - After the crawl, every discovered internal link is re-requested via plain HTTP.
+
+Known coverage limitation (kept by design): the risky-keyword deny-list is deliberately
+conservative. Harmless buttons whose labels contain words like "run" are skipped too, which
+can leave some interactive faults unexercised.
 
 ## Verification semantics
 

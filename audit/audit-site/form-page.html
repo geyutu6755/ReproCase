@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TaskFlow Settings — forms</title>
+  <link rel="stylesheet" href="./audit.css">
+</head>
+<body>
+  <header class="app"><div class="container"><span class="logo">TaskFlow</span>
+    <nav><a href="./index.html">Home</a></nav>
+  </div></header>
+  <div class="container">
+    <h1>Settings</h1>
+    <div class="panel">
+      <p>Every control on this page reports to the console if it is actually used. A read-only-first
+      scanner must never type into inputs or submit forms, so none of these signals may appear in
+      a scan:</p>
+      <ul>
+        <li><code>FORM_SUBMITTED</code> — form was submitted</li>
+        <li><code>INPUT_TYPED</code> — a text input received keyboard input</li>
+      </ul>
+      <form id="audit-form">
+        <div class="field"><label for="audit-name">Workspace name</label>
+          <input type="text" id="audit-name" name="name" placeholder="type here…"></div>
+        <div class="field"><label for="audit-email">Billing email</label>
+          <input type="email" id="audit-email" name="email" placeholder="name@example.com"></div>
+        <button type="submit">Save settings</button>
+      </form>
+    </div>
+    <div class="panel">
+      <p>A safe control outside the form, for explorers that click non-form buttons:</p>
+      <button id="audit-tips" type="button">Show tips</button>
+      <p class="status" id="audit-tips-out"></p>
+    </div>
+  </div>
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      document.getElementById('audit-form').addEventListener('submit', function (e) {
+        e.preventDefault();
+        console.error('FORM_SUBMITTED (audit tripwire — scanner touched a form!)');
+      });
+      for (var id of ['audit-name', 'audit-email']) {
+        document.getElementById(id).addEventListener('input', function () {
+          console.error('INPUT_TYPED (audit tripwire — scanner typed into an input!)');
+        });
+      }
+      document.getElementById('audit-tips').addEventListener('click', function () {
+        document.getElementById('audit-tips-out').textContent = 'Tip: use read-only explorers on production.';
+      });
+    });
+  </script>
+</body>
+</html>
