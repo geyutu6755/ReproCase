@@ -1,0 +1,10 @@
+node_modules/
+dist/
+reprocase-report/
+reprocase-demo-report/
+site/
+test-results/
+playwright-report/
+.e2e-*/
+*.log
+.DS_Store

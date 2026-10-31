@@ -1,0 +1,54 @@
+{
+  "name": "reprocase",
+  "version": "0.1.0",
+  "description": "Automated website fault detection & reproduction. Scans a site in a real browser, verifies each fault independently, and emits reproducible Playwright regression tests plus human- and CI-friendly reports.",
+  "type": "module",
+  "license": "MIT",
+  "author": "ReproCase contributors",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/geyutu6755/ReproCase.git"
+  },
+  "keywords": [
+    "testing",
+    "playwright",
+    "regression",
+    "reproduction",
+    "qa",
+    "bug-reproduction",
+    "website-testing",
+    "cli"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "bin": {
+    "reprocase": "dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "examples/demo-site",
+    "README.md",
+    "README.zh-CN.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "prepublishOnly": "npm run build",
+    "test": "vitest run tests/unit",
+    "test:all": "vitest run",
+    "test:e2e": "vitest run tests/e2e"
+  },
+  "dependencies": {
+    "@playwright/test": "^1.49.0",
+    "commander": "^12.1.0",
+    "playwright": "^1.49.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}
