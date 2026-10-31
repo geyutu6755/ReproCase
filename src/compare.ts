@@ -275,6 +275,7 @@ export function renderCompareHtml(result: CompareResult): string {
 <script>
 (function () {
   var D = window.__REPROCASE_COMPARE__;
+  var s = D.summary || { newCount: 0, resolvedCount: 0, resolvedUnconfirmedCount: 0, persistentCount: 0, statusChangedCount: 0 };
   function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined && text !== null) e.textContent = String(text); return e; }
   function chip(cls, text) { return el('span', 'chip ' + cls, text); }
   function findingCard(f, extraChips) {
