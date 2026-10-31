@@ -17,6 +17,7 @@ export const DEFAULT_CONFIG: Omit<ReproCaseConfig, 'entry'> = {
     mobile: { width: 390, height: 844 }
   },
   allowedActions: { clickLinks: true, clickButtons: true, fillForms: false },
+  exploration: { allowSelectors: [], denySelectors: [] },
   capture: { screenshots: true, traces: 'auto' },
   verification: { attempts: 3 },
   report: { redactQuery: true }
@@ -85,6 +86,7 @@ const KNOWN_KEYS = new Set([
   'requestDelayMs',
   'viewports',
   'allowedActions',
+  'exploration',
   'capture',
   'verification',
   'report'
@@ -135,6 +137,7 @@ export function resolveConfig(partial: Record<string, unknown>): ResolvedConfig 
 
   const viewports = isPlainObject(partial.viewports) ? partial.viewports : {};
   const allowedActions = isPlainObject(partial.allowedActions) ? partial.allowedActions : {};
+  const exploration = isPlainObject(partial.exploration) ? partial.exploration : {};
   const capture = isPlainObject(partial.capture) ? partial.capture : {};
   const verification = isPlainObject(partial.verification) ? partial.verification : {};
   const report = isPlainObject(partial.report) ? partial.report : {};
@@ -165,6 +168,10 @@ export function resolveConfig(partial: Record<string, unknown>): ResolvedConfig 
       clickLinks: bool(allowedActions.clickLinks, 'allowedActions.clickLinks', warnings, true),
       clickButtons: bool(allowedActions.clickButtons, 'allowedActions.clickButtons', warnings, true),
       fillForms: bool(allowedActions.fillForms, 'allowedActions.fillForms', warnings, false)
+    },
+    exploration: {
+      allowSelectors: stringList(exploration.allowSelectors, 'exploration.allowSelectors', warnings, []),
+      denySelectors: stringList(exploration.denySelectors, 'exploration.denySelectors', warnings, [])
     },
     capture: {
       screenshots: bool(capture.screenshots, 'capture.screenshots', warnings, true),

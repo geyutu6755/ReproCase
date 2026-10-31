@@ -1,14 +1,23 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { chromium, type Browser, type Page } from 'playwright';
-import type { Finding, FindingType, PageRecord, ReproCaseConfig, ScanResult, Severity, Step } from './types.js';
+import type {
+  ExplorationLogEntry,
+  Finding,
+  FindingType,
+  PageRecord,
+  ReproCaseConfig,
+  ScanResult,
+  Severity,
+  Step
+} from './types.js';
 import { FindingCollector, type ObservationInput } from './findings.js';
 import {
   collectCandidatesInPage,
   measureOverflowInPage,
   OVERFLOW_TOLERANCE_PX,
   UNHANDLED_REJECTION_SCRIPT,
-  type CandidateInfo
+  type CandidateCollection
 } from './util/selectors.js';
 import { firstLine, hostnameOf, isLocalhostHost, normalizeUrl, redactSecretsInText, redactUrl, samePort, sha1Short, sleep } from './util/net.js';
 import { domainAllowed } from './config.js';
@@ -71,6 +80,7 @@ export class Scanner {
   private truncated: string | undefined;
   private entryUnreachable = false;
   private readonly linkTargets = new Map<string, Set<string>>();
+  private readonly exploration: ExplorationLogEntry[] = [];
   private shotSeq = 0;
   private readonly startedAt = Date.now();
 
@@ -116,6 +126,10 @@ export class Scanner {
     if (t === true) return true;
     if (t === false) return false;
     return isLocalhostHost(hostnameOf(this.cfg.entry));
+  }
+
+  private logExploration(entry: ExplorationLogEntry): void {
+    if (this.exploration.length < 300) this.exploration.push(entry);
   }
 
   private async crawl(browser: Browser): Promise<void> {
@@ -191,8 +205,24 @@ export class Scanner {
     // pending observations belong to the DESTINATION page, so replaying the
     // previous page's clicks there would be invalid (audit finding D5).
     const stepsOriginUrl: { current: string } = { current: normalizeUrl(url) };
+    // Counts document loads so exploration can tell real navigations from
+    // same-document (pushState/replaceState) SPA transitions.
+    const documentLoadsRef = { count: 0 };
 
     const obs: ObserveFn = async (input) => {
+      // Scope guard: a redirect can drag the page out of the scan origin
+      // (different port/protocol/host). Observations from outside the scope
+      // are suppressed and logged — never reported (audit D1 hardening).
+      // about:blank is a transient pre-commit attribution and is allowed:
+      // document observations carry the response URL as ground truth.
+      if (!this.isFirstParty(input.url) && input.url !== 'about:blank') {
+        this.logExploration({
+          page: redactUrl(normalizeUrl(input.url), cfg.report.redactQuery),
+          description: `suppressed ${input.type} observation from outside the scan scope`,
+          outcome: 'skipped-off-scope'
+        });
+        return;
+      }
       // Redact at the source, before anything can reach a finding, a repro
       // plan, a generated test or a report: query strings ride along in page
       // URLs, resource URLs and stack traces alike (audit finding D7).
@@ -280,6 +310,20 @@ export class Scanner {
       });
     });
     page.on('response', (res) => {
+      if (res.request().resourceType() === 'document') {
+        documentLoadsRef.count++;
+        const landedUrl = res.url();
+        if (!this.isFirstParty(landedUrl)) {
+          // A redirect dragged the page outside the scan origin: log it and
+          // never report anything from there (SSRF/越界 hardening).
+          this.logExploration({
+            page: redactUrl(normalizeUrl(landedUrl), cfg.report.redactQuery),
+            description: 'document redirect left the scan scope',
+            outcome: 'skipped-off-scope'
+          });
+          return;
+        }
+      }
       if (res.status() < 400) return;
       const u = res.url();
       if (FAVICON_RE.test(new URL(u, page.url()).pathname)) return;
@@ -287,7 +331,9 @@ export class Scanner {
       if (res.request().resourceType() === 'document') {
         void obs({
           type: 'page-load-failure',
-          url: page.url(),
+          // The response URL is the ground truth for what was loaded —
+          // page.url() can still be about:blank at response-event time.
+          url: u,
           targetUrl: u,
           evidence: { statusCode: res.status() },
           steps: [...stepsBox.steps]
@@ -393,8 +439,30 @@ export class Scanner {
       await page.setViewportSize({ ...cfg.viewports.desktop });
       await page.waitForTimeout(150);
 
-      await this.explorePage(page, record, stepsBox, stepsOriginUrl, obs, deadline, depth, enqueue);
+      const docLoadsAtStart = documentLoadsRef.count;
+      await this.explorePage(
+        page,
+        record,
+        stepsBox,
+        stepsOriginUrl,
+        obs,
+        deadline,
+        depth,
+        enqueue,
+        documentLoadsRef
+      );
       await this.pollRejections(page, stepsBox, stepsOriginUrl, obs);
+
+      // A same-document (SPA) transition may have changed the URL without a
+      // document load: open the final URL directly once, as a deep-link check.
+      if (
+        normalizeUrl(page.url()) !== normalizeUrl(url) &&
+        documentLoadsRef.count === docLoadsAtStart &&
+        Date.now() <= deadline
+      ) {
+        enqueue(page.url(), depth + 1);
+        log.verbose(`[spa] same-document route queued for deep-link check: ${page.url()}`);
+      }
 
       // If exploration stayed on this page, re-check mobile overflow once —
       // interaction-injected content can overflow at phone widths only. The
@@ -430,8 +498,17 @@ export class Scanner {
    * Buttons only: <a> destinations are traversed by the crawl queue, and
    * clicking navigational links (header navs!) would abandon the page before
    * its buttons are ever tried — the audit found exactly that systematic
-   * false-negative (findings D2/D6). A button that navigates (e.g.
-   * location.href) still enqueues its destination before the loop breaks.
+   * false-negative (findings D2/D6).
+   *
+   * Policy (three tiers): hard-dangerous keywords are forbidden; soft keywords
+   * are skipped unless authorized via exploration.allowSelectors; anything
+   * matching exploration.denySelectors is excluded. Every considered control
+   * is recorded in the exploration log (explored / navigated / skipped /
+   * not-covered), so coverage gaps are visible instead of silent.
+   *
+   * Same-document (pushState/replaceState) transitions continue the loop —
+   * the final URL is queued afterwards as a deep-link check instead of
+   * abandoning the remaining buttons.
    */
   private async explorePage(
     page: Page,
@@ -441,49 +518,132 @@ export class Scanner {
     obs: ObserveFn,
     deadline: number,
     depth: number,
-    enqueue: (rawUrl: string, depth: number) => void
+    enqueue: (rawUrl: string, depth: number) => void,
+    documentLoadsRef: { count: number }
   ): Promise<void> {
     const cfg = this.cfg;
     if (!cfg.allowedActions.clickButtons) return;
     if (cfg.maxActionsPerPage === 0) return;
+    const pageUrl = redactUrl(normalizeUrl(page.url()), cfg.report.redactQuery);
 
-    let candidates: CandidateInfo[] = await page
-      .evaluate(collectCandidatesInPage, 200)
-      .catch((): CandidateInfo[] => []);
-    candidates = candidates.filter((c) => c.kind === 'button');
-    candidates = candidates.slice(0, cfg.maxActionsPerPage);
+    let collection: CandidateCollection = await page
+      .evaluate(collectCandidatesInPage, {
+        max: 200,
+        allowSelectors: cfg.exploration.allowSelectors,
+        denySelectors: cfg.exploration.denySelectors
+      })
+      .catch((): CandidateCollection => ({ candidates: [], skipped: [] }));
+
+    for (const skip of collection.skipped) {
+      this.logExploration({
+        page: pageUrl,
+        description: skip.description,
+        selector: skip.selector,
+        outcome:
+          skip.reason === 'forbidden'
+            ? 'forbidden'
+            : skip.reason === 'denied'
+              ? 'skipped-denied'
+              : 'skipped-risky',
+        note:
+          skip.reason === 'forbidden'
+            ? 'hard-dangerous keyword (never clickable)'
+            : skip.reason === 'denied'
+              ? 'matched exploration.denySelectors'
+              : 'soft risky keyword — authorize via exploration.allowSelectors to enable'
+      });
+    }
+
+    const overflow = collection.candidates.length - cfg.maxActionsPerPage;
+    if (overflow > 0) {
+      this.logExploration({
+        page: pageUrl,
+        description: `${overflow} additional button(s) not covered (maxActionsPerPage=${cfg.maxActionsPerPage})`,
+        outcome: 'not-covered'
+      });
+    }
+    const candidates = collection.candidates.slice(0, cfg.maxActionsPerPage);
 
     for (const cand of candidates) {
-      if (Date.now() > deadline) break;
+      if (Date.now() > deadline) {
+        this.logExploration({
+          page: pageUrl,
+          description: `remaining buttons not covered (run deadline)`,
+          outcome: 'not-covered'
+        });
+        break;
+      }
       const step: Step = {
         action: 'click',
         description: `click button "${cand.text || cand.selector}"`,
-        selector: cand.selector
+        selector: cand.selector,
+        locatorStrategy: cand.strategy
       };
       const before = normalizeUrl(page.url());
+      const docLoadsBefore = documentLoadsRef.count;
       stepsBox.steps = [...stepsBox.steps, step];
       try {
         await page.click(cand.selector, { timeout: 3000 });
       } catch {
         // Element vanished or is not clickable; skip it and continue.
         stepsBox.steps = stepsBox.steps.slice(0, -1);
+        this.logExploration({
+          page: pageUrl,
+          description: step.description,
+          selector: cand.selector,
+          outcome: 'click-failed'
+        });
         continue;
       }
       this.stats.actionsPerformed++;
       record.actions++;
 
-      await page.waitForTimeout(400 + cfg.requestDelayMs).catch(() => undefined);
-      await page.waitForLoadState('load', { timeout: 5000 }).catch(() => undefined);
+      // Event-first waiting: resolve the load state if a navigation happens,
+      // then a bounded micro-settle for SPA re-render + the request delay.
+      await page.waitForLoadState('load', { timeout: 3000 }).catch(() => undefined);
+      await page.waitForTimeout(Math.min(250 + cfg.requestDelayMs, 1000)).catch(() => undefined);
 
-      if (normalizeUrl(page.url()) !== before) {
-        // The button navigated to a new page. From here on observations belong
-        // to the destination, so the previous page's click path no longer
-        // applies (audit finding D5).
+      const urlChanged = normalizeUrl(page.url()) !== before;
+      const docLoaded = documentLoadsRef.count > docLoadsBefore;
+
+      if (urlChanged && docLoaded) {
+        // Real navigation to a new document: observations from here belong to
+        // the destination (audit finding D5), and the BFS queue takes over.
         stepsOriginUrl.current = normalizeUrl(page.url());
         stepsBox.steps = [];
         enqueue(page.url(), depth + 1);
+        this.logExploration({
+          page: pageUrl,
+          description: step.description,
+          selector: cand.selector,
+          outcome: 'navigated',
+          note: `destination queued: ${redactUrl(normalizeUrl(page.url()), cfg.report.redactQuery)}`
+        });
         break;
       }
+
+      if (urlChanged && !docLoaded) {
+        // Same-document SPA transition (pushState/replaceState): keep exploring
+        // the remaining buttons; the final URL is queued as a deep-link check
+        // after the loop (see caller).
+        stepsOriginUrl.current = normalizeUrl(page.url());
+        stepsBox.steps = [];
+        this.logExploration({
+          page: pageUrl,
+          description: step.description,
+          selector: cand.selector,
+          outcome: 'explored',
+          note: `same-document navigation (SPA) -> ${redactUrl(normalizeUrl(page.url()), cfg.report.redactQuery)}`
+        });
+        continue;
+      }
+
+      this.logExploration({
+        page: pageUrl,
+        description: step.description,
+        selector: cand.selector,
+        outcome: 'explored'
+      });
 
       await this.pollRejections(page, stepsBox, stepsOriginUrl, obs);
 
@@ -586,6 +746,7 @@ export class Scanner {
       },
       findings,
       pages: this.pages,
+      exploration: this.exploration,
       notChecked: NOT_CHECKED,
       truncated: this.truncated,
       entryUnreachable: this.entryUnreachable,

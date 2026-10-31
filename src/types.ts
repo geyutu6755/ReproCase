@@ -18,6 +18,13 @@ export type Severity = 'critical' | 'high' | 'medium' | 'low';
  */
 export type FindingStatus = 'verified' | 'suspected';
 
+/**
+ * Reproduction reliability measured by the verification pass:
+ * stable = reproduced in every attempt, intermittent = reproduced in some,
+ * unreproducible = never reproduced after the initial observation.
+ */
+export type FindingStability = 'stable' | 'intermittent' | 'unreproducible';
+
 export type ViewportLabel = 'desktop' | 'mobile';
 
 export interface ViewportSize {
@@ -31,6 +38,33 @@ export interface Step {
   description: string;
   selector?: string;
   url?: string;
+  /** How the locator was built — stability signal for generated tests. */
+  locatorStrategy?: 'id' | 'testid' | 'aria-label' | 'css-path';
+}
+
+export type LocatorStrategy = NonNullable<Step['locatorStrategy']>;
+
+/**
+ * Outcome of one exploration decision — recorded for every candidate the
+ * explorer considered, so skipped and uncovered interactions are visible.
+ */
+export type ExplorationOutcome =
+  | 'explored'
+  | 'navigated'
+  | 'forbidden'
+  | 'skipped-risky'
+  | 'skipped-denied'
+  | 'not-covered'
+  | 'click-failed'
+  | 'skipped-off-scope';
+
+export interface ExplorationLogEntry {
+  page: string;
+  description: string;
+  outcome: ExplorationOutcome;
+  selector?: string;
+  /** Extra context, e.g. "same-document navigation (SPA)" or a match reason. */
+  note?: string;
 }
 
 export interface OverflowOffender {
@@ -87,6 +121,7 @@ export interface Finding {
   type: FindingType;
   severity: Severity;
   status: FindingStatus;
+  stability?: FindingStability;
   /** 0..1 — successes/attempts for verified findings, lower for suspected. */
   confidence: number;
   title: string;
@@ -148,6 +183,8 @@ export interface ScanResult {
   stats: ScanStats;
   findings: Finding[];
   pages: PageRecord[];
+  /** What the explorer did, skipped or left uncovered (bounded list). */
+  exploration: ExplorationLogEntry[];
   notChecked: NotCheckedItem[];
   /** Set when the crawl stopped early (budget reached). */
   truncated?: string;
@@ -175,6 +212,16 @@ export interface ReproCaseConfig {
     clickLinks: boolean;
     clickButtons: boolean;
     fillForms: boolean;
+  };
+  /**
+   * Structured exploration policy. denySelectors exclude matched controls;
+   * allowSelectors precisely authorize controls whose label trips a SOFT
+   * risky keyword (e.g. "Run report"). HARD-dangerous keywords (pay, delete,
+   * logout, ...) can never be overridden.
+   */
+  exploration: {
+    allowSelectors: string[];
+    denySelectors: string[];
   };
   capture: {
     screenshots: boolean;

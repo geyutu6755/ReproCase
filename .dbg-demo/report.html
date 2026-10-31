@@ -1,0 +1,420 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="generator" content="ReproCase v0.1.1">
+<title>ReproCase report — http://127.0.0.1:50536/</title>
+<style>
+:root {
+  --bg: #f5f6f8; --card: #ffffff; --ink: #111827; --muted: #6b7280; --line: #e5e7eb;
+  --accent: #2563eb; --critical: #b91c1c; --high: #c2410c; --medium: #a16207; --low: #64748b;
+  --ok: #047857; --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--ink); font: 15px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif; }
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+code { font-family: var(--mono); font-size: 12.5px; background: #eef1f5; border-radius: 4px; padding: 1px 5px; word-break: break-all; }
+.topbar { background: #0f172a; color: #e2e8f0; padding: 18px 24px; }
+.topbar .inner { max-width: 1080px; margin: 0 auto; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.logo { width: 34px; height: 34px; flex: none; }
+.brand { font-size: 20px; font-weight: 700; color: #fff; letter-spacing: .2px; }
+.brand small { font-weight: 500; color: #94a3b8; margin-left: 6px; }
+.topmeta { margin-left: auto; text-align: right; font-size: 12.5px; color: #94a3b8; line-height: 1.5; }
+.topmeta a { color: #93c5fd; word-break: break-all; }
+main { max-width: 1080px; margin: 0 auto; padding: 20px 24px 60px; }
+.summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin: 4px 0 16px; }
+.stat { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
+.stat .num { font-size: 26px; font-weight: 700; line-height: 1.2; }
+.stat .lbl { color: var(--muted); font-size: 12.5px; margin-top: 2px; }
+.stat.red .num { color: var(--critical); }
+.stat.amber .num { color: var(--medium); }
+.stat.blue .num { color: var(--accent); }
+.sevbar { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; margin-bottom: 20px; }
+.sevbar h4 { margin: 0 0 10px; font-size: 13px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .4px; }
+.sevrow { display: grid; grid-template-columns: 70px 1fr 28px; align-items: center; gap: 10px; margin: 6px 0; font-size: 12.5px; }
+.sevrow .name { color: var(--muted); font-weight: 600; }
+.sevrow .track { background: #eef1f5; border-radius: 99px; height: 8px; overflow: hidden; }
+.sevrow .fill { height: 100%; border-radius: 99px; }
+.sevrow .cnt { text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
+.toolbar { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 14px; }
+.toolbar input, .toolbar select { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; font: inherit; font-size: 13.5px; color: var(--ink); }
+.toolbar input { flex: 1 1 220px; }
+.count { color: var(--muted); font-size: 13px; margin-left: auto; white-space: nowrap; }
+.finding { background: var(--card); border: 1px solid var(--line); border-left: 4px solid var(--muted); border-radius: 10px; padding: 16px 18px; margin-bottom: 14px; }
+.finding.critical { border-left-color: var(--critical); }
+.finding.high { border-left-color: var(--high); }
+.finding.medium { border-left-color: var(--medium); }
+.finding.low { border-left-color: var(--low); }
+.chips { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.chip { font-size: 11px; font-weight: 700; letter-spacing: .4px; text-transform: uppercase; border-radius: 99px; padding: 3px 10px; }
+.chip.critical { background: #fef2f2; color: var(--critical); }
+.chip.high { background: #fff7ed; color: var(--high); }
+.chip.medium { background: #fefce8; color: var(--medium); }
+.chip.low { background: #f1f5f9; color: var(--low); }
+.chip.verified { background: var(--critical); color: #fff; }
+.chip.suspected { background: transparent; color: var(--muted); border: 1px dashed #cbd5e1; }
+.chip.type { background: #eff6ff; color: var(--accent); text-transform: none; letter-spacing: 0; }
+.finding h3 { margin: 10px 0 4px; font-size: 16.5px; line-height: 1.35; }
+.meta { color: var(--muted); font-size: 12.5px; display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 10px; }
+.meta b { color: var(--ink); font-weight: 600; }
+.conf { display: inline-block; width: 70px; height: 6px; background: #eef1f5; border-radius: 99px; vertical-align: middle; margin: 0 6px 2px 2px; }
+.conf i { display: block; height: 100%; border-radius: 99px; background: var(--accent); }
+pre.evidence { background: #0f172a; color: #e2e8f0; border-radius: 8px; padding: 12px 14px; font-family: var(--mono); font-size: 12.5px; overflow: auto; max-height: 320px; white-space: pre-wrap; word-break: break-word; margin: 8px 0; }
+.steps { margin: 8px 0; padding-left: 22px; }
+.steps li { margin: 3px 0; font-size: 13.5px; }
+.sect-label { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); margin: 14px 0 6px; }
+.shots { display: flex; gap: 10px; flex-wrap: wrap; }
+.shots img { max-width: 260px; max-height: 170px; border: 1px solid var(--line); border-radius: 8px; cursor: zoom-in; background: #fff; }
+.artifacts { font-size: 13px; color: var(--muted); display: flex; flex-direction: column; gap: 3px; margin-top: 8px; }
+.artifacts .privacy-note { color: #92400e; background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; padding: 4px 8px; }
+table.pages { width: 100%; border-collapse: collapse; background: var(--card); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; font-size: 13px; }
+table.pages th, table.pages td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--line); }
+table.pages th { background: #f8fafc; color: var(--muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .4px; }
+table.pages tr:last-child td { border-bottom: none; }
+td.url { max-width: 380px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bad { color: var(--critical); font-weight: 600; }
+.warnbox { background: #fffbeb; border: 1px solid #fde68a; color: #92400e; border-radius: 10px; padding: 12px 16px; margin: 0 0 16px; font-size: 13.5px; }
+h2.section { font-size: 17px; margin: 34px 0 12px; }
+.notchecked { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 6px 18px; }
+.notchecked .item { padding: 10px 0; border-bottom: 1px solid var(--line); }
+.notchecked .item:last-child { border-bottom: none; }
+.notchecked b { display: block; font-size: 13.5px; }
+.notchecked span { color: var(--muted); font-size: 13px; }
+footer { color: var(--muted); font-size: 12.5px; margin-top: 34px; border-top: 1px solid var(--line); padding-top: 14px; }
+.empty { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; border-radius: 10px; padding: 22px; text-align: center; font-size: 15px; }
+#lightbox { display: none; position: fixed; inset: 0; background: rgba(15,23,42,.85); z-index: 50; cursor: zoom-out; align-items: center; justify-content: center; }
+#lightbox img { max-width: 94vw; max-height: 94vh; border-radius: 8px; }
+@media (max-width: 640px) { .topmeta { text-align: left; margin-left: 0; } }
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="inner">
+    <svg class="logo" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect x="6" y="10" width="36" height="30" rx="6" stroke="#38bdf8" stroke-width="3"/><path d="M14 10V7M34 10V7" stroke="#38bdf8" stroke-width="3" stroke-linecap="round"/><circle cx="24" cy="26" r="7" stroke="#f87171" stroke-width="3"/><path d="M29 31l5 5" stroke="#f87171" stroke-width="3" stroke-linecap="round"/></svg>
+    <div class="brand">ReproCase<small>v0.1.1</small></div>
+    <div class="topmeta">
+      <div>target: <a href="http://127.0.0.1:50536/" rel="noreferrer">http://127.0.0.1:50536/</a></div>
+      <div>finished: 2026-10-31T17:18:00.795Z · allowed domains: 127.0.0.1</div>
+    </div>
+  </div>
+</header>
+<main>
+  
+  <section id="summary" class="summary"></section>
+  <section id="sevbars" class="sevbar"></section>
+  <div id="toolbar" class="toolbar">
+    <input id="q" type="search" placeholder="Search title, URL, message…" aria-label="Search findings">
+    <select id="sev" aria-label="Filter by severity">
+      <option value="all">all severities</option>
+      <option value="critical">critical</option>
+      <option value="high">high</option>
+      <option value="medium">medium</option>
+      <option value="low">low</option>
+    </select>
+    <select id="status" aria-label="Filter by status">
+      <option value="all">all statuses</option>
+      <option value="verified">verified</option>
+      <option value="suspected">suspected</option>
+    </select>
+    <select id="type" aria-label="Filter by type">
+      <option value="all">all types</option>
+      <option value="js-exception">js-exception</option><option value="resource-load-failure">resource-load-failure</option><option value="broken-internal-link">broken-internal-link</option><option value="horizontal-overflow">horizontal-overflow</option>
+    </select>
+    <span id="count" class="count"></span>
+  </div>
+  <section id="findings"></section>
+
+  <h2 class="section">Pages checked</h2>
+  <section id="pagesSect">
+    <table class="pages" id="pagesTbl">
+      <thead><tr><th>URL</th><th>HTTP</th><th>Depth</th><th>Actions</th><th>JS errors</th><th>Res. errors</th><th>Overflow</th><th>Time</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </section>
+
+  <h2 class="section">Not checked (out of scope by design)</h2>
+  <section id="notchecked" class="notchecked"></section>
+
+  <footer id="footer"></footer>
+</main>
+<div id="lightbox" role="dialog" aria-label="Screenshot preview"><img alt="Screenshot preview"></div>
+<script>window.__REPROCASE_DATA__ = {"tool":{"name":"ReproCase","version":"0.1.1"},"startedAt":"2026-10-31T17:17:43.524Z","finishedAt":"2026-10-31T17:18:00.795Z","target":{"entry":"http://127.0.0.1:50536/","allowedDomains":["127.0.0.1"]},"config":{"entry":"http://127.0.0.1:50536/","allowedDomains":["127.0.0.1"],"maxPages":15,"maxDepth":3,"maxActionsPerPage":10,"navigationTimeoutMs":15000,"runTimeoutMs":180000,"requestDelayMs":150,"viewports":{"desktop":{"width":1280,"height":720},"mobile":{"width":390,"height":844}},"allowedActions":{"clickLinks":true,"clickButtons":true,"fillForms":false},"exploration":{"allowSelectors":[],"denySelectors":[]},"capture":{"screenshots":true,"traces":"auto"},"verification":{"attempts":3},"report":{"redactQuery":true}},"stats":{"pagesVisited":9,"actionsPerformed":3,"requestsObserved":20,"linksChecked":8,"durationMs":17271,"findingsRaw":5,"findingsAfterDedupe":4},"findings":[{"id":"fp-880ae228","fingerprint":"js-exception|http://127.0.0.1:50536/js-error.html|Boom: intentional demo crash (ReproCase demo fault #1)","type":"js-exception","severity":"high","status":"verified","confidence":1,"title":"Uncaught JS exception: Boom: intentional demo crash (ReproCase demo fault #1)","url":"http://127.0.0.1:50536/js-error.html","pages":["http://127.0.0.1:50536/js-error.html"],"evidence":{"message":"Boom: intentional demo crash (ReproCase demo fault #1)","stack":"Error: Boom: intentional demo crash (ReproCase demo fault #1)\n    at HTMLButtonElement.\u003canonymous\u003e (http://127.0.0.1:50536/js-error.html:27:15)"},"steps":[{"action":"click","description":"click button \"Trigger JavaScript error\"","selector":"#crash-btn","locatorStrategy":"id"}],"repro":{"attempts":3,"successes":3,"observedCount":1},"screenshots":["artifacts/screenshots/page-000.png"],"traces":["artifacts/traces/trace-3f685514.zip"],"plan":{"kind":"js-error","url":"http://127.0.0.1:50536/js-error.html","message":"Boom: intentional demo crash (ReproCase demo fault #1)","steps":[{"action":"click","description":"click button \"Trigger JavaScript error\"","selector":"#crash-btn","locatorStrategy":"id"}]},"firstSeenAt":"2026-10-31T17:17:48.293Z","lastSeenAt":"2026-10-31T17:17:48.293Z","stability":"stable","generatedTest":"generated-tests/reprocase-fp-880ae228-01.spec.ts"},{"id":"fp-172d04a4","fingerprint":"broken-internal-link|http://127.0.0.1:50536/missing-page.html","type":"broken-internal-link","severity":"medium","status":"verified","confidence":1,"title":"Broken internal link -\u003e http://127.0.0.1:50536/missing-page.html","url":"http://127.0.0.1:50536/broken-link.html","pages":["http://127.0.0.1:50536/broken-link.html"],"evidence":{"statusCode":404,"resourceUrl":"http://127.0.0.1:50536/missing-page.html"},"steps":[],"repro":{"attempts":3,"successes":3,"observedCount":1},"screenshots":[],"traces":[],"plan":{"kind":"link-status","url":"http://127.0.0.1:50536/broken-link.html","targetUrl":"http://127.0.0.1:50536/missing-page.html","statusCode":404},"firstSeenAt":"2026-10-31T17:17:55.288Z","lastSeenAt":"2026-10-31T17:17:55.288Z","stability":"stable","generatedTest":"generated-tests/reprocase-fp-172d04a4-02.spec.ts"},{"id":"fp-ade7f67f","fingerprint":"resource-load-failure|http://127.0.0.1:50536/assets/missing-logo.png|404","type":"resource-load-failure","severity":"medium","status":"verified","confidence":1,"title":"First-party resource failed to load: http://127.0.0.1:50536/assets/missing-logo.png (HTTP 404)","url":"http://127.0.0.1:50536/broken-image.html","pages":["http://127.0.0.1:50536/broken-image.html"],"evidence":{"statusCode":404,"resourceUrl":"http://127.0.0.1:50536/assets/missing-logo.png"},"steps":[],"repro":{"attempts":3,"successes":3,"observedCount":1},"screenshots":["artifacts/screenshots/page-003.png"],"traces":["artifacts/traces/trace-b39eefe8.zip"],"plan":{"kind":"resource-status","url":"http://127.0.0.1:50536/broken-image.html","targetUrl":"http://127.0.0.1:50536/assets/missing-logo.png","statusCode":404},"firstSeenAt":"2026-10-31T17:17:51.849Z","lastSeenAt":"2026-10-31T17:17:51.849Z","stability":"stable","generatedTest":"generated-tests/reprocase-fp-ade7f67f-03.spec.ts"},{"id":"fp-fba8bc59","fingerprint":"horizontal-overflow|http://127.0.0.1:50536/overflow.html|mobile","type":"horizontal-overflow","severity":"low","status":"verified","confidence":1,"title":"Horizontal overflow on mobile viewport","url":"http://127.0.0.1:50536/overflow.html","pages":["http://127.0.0.1:50536/overflow.html"],"evidence":{"viewport":"mobile","scrollWidth":736,"clientWidth":390,"offenders":[{"selector":"div","tag":"div","right":736,"width":720,"snippet":"\u003cdiv class=\"wide-panel\"\u003e720px fixed-width panel — overflows phones, fits desktops\u003c/div\u003e"}]},"steps":[],"repro":{"attempts":3,"successes":3,"observedCount":2},"screenshots":["artifacts/screenshots/page-001.png","artifacts/screenshots/page-002.png"],"traces":["artifacts/traces/trace-ae325f50.zip"],"plan":{"kind":"overflow","url":"http://127.0.0.1:50536/overflow.html","viewport":"mobile","steps":[]},"firstSeenAt":"2026-10-31T17:17:51.033Z","lastSeenAt":"2026-10-31T17:17:51.482Z","stability":"stable","generatedTest":"generated-tests/reprocase-fp-fba8bc59-04.spec.ts"}],"pages":[{"url":"http://127.0.0.1:50536/","depth":0,"actions":0,"jsErrors":0,"resourceErrors":0,"overflow":false,"durationMs":1040,"status":200},{"url":"http://127.0.0.1:50536/clean.html","depth":1,"actions":1,"jsErrors":0,"resourceErrors":0,"overflow":false,"durationMs":1299,"status":200},{"url":"http://127.0.0.1:50536/clean-2.html","depth":1,"actions":0,"jsErrors":0,"resourceErrors":0,"overflow":false,"durationMs":848,"status":200},{"url":"http://127.0.0.1:50536/js-error.html","depth":1,"actions":2,"jsErrors":1,"resourceErrors":0,"overflow":false,"durationMs":1790,"status":200},{"url":"http://127.0.0.1:50536/broken-link.html","depth":1,"actions":0,"jsErrors":0,"resourceErrors":0,"overflow":false,"durationMs":843,"status":200},{"url":"http://127.0.0.1:50536/overflow.html","depth":1,"actions":0,"jsErrors":0,"resourceErrors":0,"overflow":true,"durationMs":929,"status":200},{"url":"http://127.0.0.1:50536/broken-image.html","depth":1,"actions":0,"jsErrors":0,"resourceErrors":1,"overflow":false,"durationMs":885,"status":200},{"url":"http://127.0.0.1:50536/index.html","depth":2,"actions":0,"jsErrors":0,"resourceErrors":0,"overflow":false,"durationMs":913,"status":200},{"url":"http://127.0.0.1:50536/missing-page.html","depth":2,"actions":0,"jsErrors":0,"resourceErrors":0,"overflow":false,"durationMs":834,"status":404}],"exploration":[{"page":"http://127.0.0.1:50536/clean.html","description":"click button \"Toggle highlight\"","selector":"#toggle-btn","outcome":"explored"},{"page":"http://127.0.0.1:50536/js-error.html","description":"click button \"Trigger JavaScript error\"","selector":"#crash-btn","outcome":"explored"},{"page":"http://127.0.0.1:50536/js-error.html","description":"click button \"Say hello (harmless)\"","selector":"#hello-btn","outcome":"explored"},{"page":"about:blank","description":"suppressed page-load-failure observation from outside the scan scope","outcome":"skipped-off-scope"}],"notChecked":[{"area":"Forms and form submission","reason":"Read-only-first exploration never types into or submits forms, so form flows are not exercised."},{"area":"Authenticated / session-specific pages","reason":"ReproCase explores without credentials; pages behind logins are out of reach."},{"area":"Third-party resource failures","reason":"Observed but not reported: failures on hosts outside the allowed domains are excluded on purpose."},{"area":"Visual layout beyond horizontal overflow","reason":"No pixel comparison or visual regression testing is performed."},{"area":"Accessibility","reason":"Not audited in this version."},{"area":"Performance","reason":"No timing budgets are evaluated."},{"area":"Backend / business logic correctness","reason":"Only client-observable behaviour is judged. ReproCase never decides whether business outcomes are correct."}],"entryUnreachable":false,"summary":{"verified":4,"suspected":0,"bySeverity":{"critical":0,"high":1,"medium":2,"low":1},"byType":{"js-exception":1,"broken-internal-link":1,"resource-load-failure":1,"horizontal-overflow":1}}};</script>
+<script>
+(function () {
+  var D = window.__REPROCASE_DATA__ || { findings: [], pages: [], summary: {}, stats: {}, notChecked: [] };
+  var SEV_ORDER = { critical: 0, high: 1, medium: 2, low: 3 };
+  var SEV_COLOR = { critical: '#b91c1c', high: '#c2410c', medium: '#a16207', low: '#64748b' };
+  var state = { q: '', severity: 'all', status: 'all', type: 'all' };
+
+  function el(tag, cls, text) {
+    var e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text !== undefined && text !== null) e.textContent = String(text);
+    return e;
+  }
+  function chip(cls, text) { return el('span', 'chip ' + cls, text); }
+  function fmtSec(ms) { return ms >= 1000 ? (ms / 1000).toFixed(1) + 's' : ms + 'ms'; }
+
+  var findings = (D.findings || []).slice().sort(function (a, b) {
+    if (a.status !== b.status) return a.status === 'verified' ? -1 : 1;
+    return (SEV_ORDER[a.severity] - SEV_ORDER[b.severity]) || a.title.localeCompare(b.title);
+  });
+
+  function matches(f) {
+    if (state.severity !== 'all' && f.severity !== state.severity) return false;
+    if (state.status !== 'all' && f.status !== state.status) return false;
+    if (state.type !== 'all' && f.type !== state.type) return false;
+    if (state.q) {
+      var hay = (f.title + ' ' + f.url + ' ' + (f.evidence.message || '') + ' ' + (f.evidence.resourceUrl || '')).toLowerCase();
+      if (hay.indexOf(state.q) === -1) return false;
+    }
+    return true;
+  }
+
+  function renderSummary() {
+    var s = D.summary || {};
+    var st = D.stats || {};
+    var box = document.getElementById('summary');
+    function stat(numId, num, lbl, cls) {
+      var d = el('div', 'stat' + (cls ? ' ' + cls : ''));
+      d.appendChild(el('div', 'num', num));
+      d.appendChild(el('div', 'lbl', lbl));
+      box.appendChild(d);
+    }
+    stat('verified', s.verified != null ? s.verified : 0, 'verified findings', 'red');
+    stat('suspected', s.suspected != null ? s.suspected : 0, 'suspected (unproven)', 'amber');
+    stat('pages', st.pagesVisited || 0, 'pages checked', 'blue');
+    stat('actions', st.actionsPerformed || 0, 'interactions performed');
+    stat('duration', fmtSec(st.durationMs || 0), 'total scan time');
+    stat('dedupe', (st.findingsRaw || 0) + ' → ' + (st.findingsAfterDedupe || 0), 'observations after dedupe');
+  }
+
+  function renderSevBars() {
+    var bySev = (D.summary && D.summary.bySeverity) || {};
+    var box = document.getElementById('sevbars');
+    box.appendChild(el('h4', null, 'Findings by severity'));
+    ['critical', 'high', 'medium', 'low'].forEach(function (sev) {
+      var n = bySev[sev] || 0;
+      var row = el('div', 'sevrow');
+      row.appendChild(el('span', 'name', sev));
+      var track = el('div', 'track');
+      var fill = el('div', 'fill');
+      fill.style.width = (n > 0 ? Math.max(6, n * 12) : 0) + '%';
+      fill.style.background = SEV_COLOR[sev];
+      track.appendChild(fill);
+      row.appendChild(track);
+      row.appendChild(el('span', 'cnt', String(n)));
+      box.appendChild(row);
+    });
+  }
+
+  function evidenceLines(f) {
+    var e = f.evidence || {};
+    var lines = [];
+    if (e.message) lines.push('message: ' + e.message);
+    if (e.statusCode !== undefined && e.statusCode !== null) lines.push('http status: ' + e.statusCode);
+    if (e.resourceUrl) lines.push('resource: ' + e.resourceUrl);
+    if (e.failureText) lines.push('failure: ' + e.failureText);
+    if (e.selector) lines.push('selector: ' + e.selector);
+    if (e.scrollWidth !== undefined) lines.push('overflow: scrollWidth=' + e.scrollWidth + 'px, clientWidth=' + e.clientWidth + 'px');
+    (e.offenders || []).forEach(function (o) {
+      lines.push('offender: <' + o.tag + '> right=' + o.right + 'px width=' + o.width + 'px ' + o.snippet);
+    });
+    if (e.stack) lines.push('stack:\n' + e.stack);
+    return lines.join('\n');
+  }
+
+  function renderFindings() {
+    var wrap = document.getElementById('findings');
+    wrap.textContent = '';
+    var visible = 0;
+    if (findings.length === 0) {
+      var ok = el('div', 'empty');
+      ok.textContent = 'No issues found. The checked pages loaded, ran and laid out without detectable faults.';
+      wrap.appendChild(ok);
+      document.getElementById('toolbar').style.display = 'none';
+      return;
+    }
+    findings.forEach(function (f) {
+      if (!matches(f)) return;
+      visible++;
+      var card = el('article', 'finding ' + f.severity);
+      card.dataset.findingId = f.id;
+      var chips = el('div', 'chips');
+      chips.appendChild(chip(f.severity, f.severity));
+      chips.appendChild(chip(f.status, f.status));
+      chips.appendChild(chip('type', f.type));
+      card.appendChild(chips);
+      card.appendChild(el('h3', null, f.title));
+
+      var meta = el('div', 'meta');
+      meta.appendChild(el('span', null, '')).appendChild(el('code', null, f.id));
+      var page = el('span');
+      page.appendChild(el('span', null, 'page: '));
+      var a = el('a', null, f.url);
+      a.href = f.url; a.target = '_blank'; a.rel = 'noreferrer';
+      page.appendChild(a);
+      meta.appendChild(page);
+      var rep = el('span');
+      rep.appendChild(el('span', null, 'reproduced: '));
+      rep.appendChild(el('b', null, f.repro.successes + '/' + f.repro.attempts + (f.repro.observedCount > 1 ? ' (seen ' + f.repro.observedCount + 'x)' : '')));
+      meta.appendChild(rep);
+      var conf = el('span');
+      conf.appendChild(el('span', null, 'confidence:'));
+      var bar = el('span', 'conf');
+      var fill = el('i');
+      fill.style.width = Math.round((f.confidence || 0) * 100) + '%';
+      bar.appendChild(fill);
+      conf.appendChild(bar);
+      conf.appendChild(el('b', null, Math.round((f.confidence || 0) * 100) + '%'));
+      meta.appendChild(conf);
+      if (f.pages && f.pages.length > 1) meta.appendChild(el('span', null, 'on ' + f.pages.length + ' pages'));
+      card.appendChild(meta);
+
+      var ev = evidenceLines(f);
+      if (ev) card.appendChild(el('pre', 'evidence', ev));
+
+      if (f.steps && f.steps.length) {
+        card.appendChild(el('div', 'sect-label', 'Reproduction steps (recorded during the scan)'));
+        var ol = el('ol', 'steps');
+        var li0 = el('li', null, '');
+        var a0 = el('a', null, 'Open ' + (f.plan && f.plan.url ? f.plan.url : f.url));
+        a0.href = (f.plan && f.plan.url) || f.url; a0.target = '_blank'; a0.rel = 'noreferrer';
+        li0.appendChild(a0);
+        ol.appendChild(li0);
+        f.steps.forEach(function (s) { ol.appendChild(el('li', null, s.description + (s.selector ? ' — ' + s.selector : ''))); });
+        ol.appendChild(el('li', null, 'Observe the fault described above.'));
+        card.appendChild(ol);
+      }
+
+      if (f.screenshots && f.screenshots.length) {
+        card.appendChild(el('div', 'sect-label', 'Screenshots'));
+        var shots = el('div', 'shots');
+        f.screenshots.forEach(function (p) {
+          var img = el('img');
+          img.src = encodeURI(p);
+          img.alt = 'Screenshot for ' + f.id;
+          img.loading = 'lazy';
+          img.addEventListener('click', function () { openLightbox(img.src); });
+          shots.appendChild(img);
+        });
+        card.appendChild(shots);
+      }
+
+      var arts = [];
+      (f.traces || []).forEach(function (t) {
+        var row = el('span');
+        var link = el('a', null, 'browser trace (playwright show-trace)');
+        link.href = encodeURI(t); link.download = t.split('/').pop();
+        row.appendChild(link);
+        row.appendChild(el('span', null, ' — ' + t));
+        arts.push(row);
+      });
+      if (f.generatedTest) {
+        var row = el('span');
+        row.appendChild(el('span', null, 'generated reproduction test: '));
+        row.appendChild(el('code', null, f.generatedTest));
+        arts.push(row);
+      }
+      if ((f.traces || []).length || (f.screenshots || []).length) {
+        // Traces record raw network traffic and screenshots capture raw page
+        // content — neither can be reliably redacted automatically, so the
+        // report itself must restrict public sharing (v0.1.1).
+        arts.push(el('span', 'privacy-note',
+          'Privacy: browser traces and screenshots may contain unredacted page content, URLs and query strings — review them before sharing this report publicly.'));
+      }
+      if (arts.length) {
+        var box = el('div', 'artifacts');
+        arts.forEach(function (r) { box.appendChild(r); });
+        card.appendChild(box);
+      }
+      wrap.appendChild(card);
+    });
+    if (visible === 0) {
+      var none = el('div', 'empty');
+      none.textContent = 'No findings match the current filters.';
+      wrap.appendChild(none);
+    }
+    document.getElementById('count').textContent = visible + ' of ' + findings.length + ' findings shown';
+  }
+
+  function renderPages() {
+    var tbody = document.querySelector('#pagesTbl tbody');
+    (D.pages || []).forEach(function (p) {
+      var tr = el('tr');
+      var urlTd = el('td', 'url');
+      var a = el('a', null, p.url);
+      a.href = p.url; a.target = '_blank'; a.rel = 'noreferrer';
+      urlTd.appendChild(a);
+      tr.appendChild(urlTd);
+      var status = el('td');
+      if (p.error) { status.appendChild(el('span', 'bad', 'network error')); status.title = p.error; }
+      else status.appendChild(el('span', p.status >= 400 ? 'bad' : null, p.status || '—'));
+      tr.appendChild(status);
+      tr.appendChild(el('td', null, String(p.depth)));
+      tr.appendChild(el('td', null, String(p.actions)));
+      tr.appendChild(el('td', null, String(p.jsErrors)));
+      tr.appendChild(el('td', null, String(p.resourceErrors)));
+      tr.appendChild(el('td', null, p.overflow ? 'yes' : 'no'));
+      tr.appendChild(el('td', null, fmtSec(p.durationMs || 0)));
+      tbody.appendChild(tr);
+    });
+    if ((D.pages || []).length === 0) document.getElementById('pagesSect').style.display = 'none';
+  }
+
+  function renderNotChecked() {
+    var box = document.getElementById('notchecked');
+    (D.notChecked || []).forEach(function (item) {
+      var d = el('div', 'item');
+      d.appendChild(el('b', null, item.area));
+      d.appendChild(el('span', null, item.reason));
+      box.appendChild(d);
+    });
+  }
+
+  function renderFooter() {
+    var st = D.stats || {};
+    var f = document.getElementById('footer');
+    f.appendChild(el('span', null,
+      'ReproCase v' + (D.tool && D.tool.version ? D.tool.version : '?') +
+      ' · scan of ' + (D.target && D.target.entry ? D.target.entry : '') +
+      ' · ' + (st.pagesVisited || 0) + ' pages, ' + (st.actionsPerformed || 0) + ' interactions, ' +
+      (st.requestsObserved || 0) + ' requests observed, ' + (st.linksChecked || 0) + ' links re-checked' +
+      ' · ' + (D.finishedAt || '')));
+    f.appendChild(el('div', null,
+      'Evidence files (screenshots, browser traces) may contain unredacted page content, URLs and query parameters. Review them before sharing this report publicly.'));
+  }
+
+  function openLightbox(src) {
+    var lb = document.getElementById('lightbox');
+    var img = lb.querySelector('img');
+    img.src = src;
+    lb.style.display = 'flex';
+  }
+
+  function wireToolbar() {
+    var q = document.getElementById('q');
+    q.addEventListener('input', function () { state.q = q.value.trim().toLowerCase(); renderFindings(); });
+    [['sev', 'severity'], ['status', 'status'], ['type', 'type']].forEach(function (pair) {
+      var sel = document.getElementById(pair[0]);
+      sel.addEventListener('change', function () { state[pair[1]] = sel.value; renderFindings(); });
+    });
+  }
+
+  var lb = document.getElementById('lightbox');
+  lb.addEventListener('click', function () { lb.style.display = 'none'; });
+
+  renderSummary();
+  renderSevBars();
+  wireToolbar();
+  renderFindings();
+  renderPages();
+  renderNotChecked();
+  renderFooter();
+})();
+</script>
+</body>
+</html>

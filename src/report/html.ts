@@ -2,12 +2,24 @@ import type { FindingType, ScanResult } from '../types.js';
 import { VERSION } from '../version.js';
 
 /** Safe to embed inside a <script> block: escapes </, <!-- and line separators. */
-function jsonForScript(data: unknown): string {
+export function jsonForScript(data: unknown): string {
   return JSON.stringify(data)
     .replace(/</g, '\\u003c')
     .replace(/>/g, '\\u003e')
     .replace(/\u2028/g, '\\u2028')
     .replace(/\u2029/g, '\\u2029');
+}
+
+export function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function escapeAttr(s: string): string {
+  return escapeHtml(s);
 }
 
 const CSS = `
@@ -452,16 +464,4 @@ export function renderHtml(result: ScanResult): string {
 </body>
 </html>
 `;
-}
-
-function escapeHtml(s: string): string {
-  return s
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
-
-function escapeAttr(s: string): string {
-  return escapeHtml(s);
 }
