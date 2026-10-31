@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    name: Test (Node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [20, 22]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Build
+        run: npm run build
+
+      - name: Unit + integration + e2e tests
+        run: npm run test:all
+
+      - name: Generate demo report (Node 22 only)
+        if: matrix.node == 22
+        run: node dist/cli.js demo --out demo-report --no-open -q
+
+      - name: Upload demo report artifact
+        if: matrix.node == 22
+        uses: actions/upload-artifact@v4
+        with:
+          name: demo-report
+          path: demo-report/
+          retention-days: 14
