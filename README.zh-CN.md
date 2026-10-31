@@ -25,6 +25,10 @@ English documentation: [README.md](README.md)
 （观察到一次但未证明可复现）。ReproCase 不伪造结果、不判定业务逻辑正确性，
 并始终列出它**没有**检查的内容。
 
+![报告总览](docs/img/report-desktop.png)
+![发现详情与复现步骤](docs/img/report-finding.png)
+![移动端布局](docs/img/report-mobile.png)
+
 ## 快速开始
 
 ```bash
@@ -34,11 +38,14 @@ cd ReproCase && npm install && npx playwright install chromium && npm run build
 npx reprocase demo            # 输出 reprocase-demo-report/report.html 并自动打开
 ```
 
-扫描任何你被授权测试的网站：
+在真实项目中使用：
 
 ```bash
+npx reprocase init            # 生成起始配置（已存在则拒绝覆盖）
+npx reprocase doctor          # 环境诊断：Node、Chromium、配置、目标可达性
+npx reprocase scan            # 按配置扫描并输出完整报告
 npx reprocase scan --url http://localhost:3000/ --out my-report
-npx reprocase scan --config reprocase.config.json --fail-on verified
+npx reprocase compare before/result.json after/result.json   # 新增/已解决/持续存在
 ```
 
 > 退出码：`0` 无达到阈值的发现 · `1` 存在发现 · `2` 扫描失败（配置错误、入口不可达）。
@@ -64,6 +71,26 @@ my-report/
 生成的 Playwright 测试**断言故障仍然存在**：Bug 存在时测试通过（证明可稳定复现），
 修复后测试失败 —— 失败本身提示你换入文件中注释掉的“修复后”断言，把文件变成
 永久的回归守卫。
+
+## 跨扫描比较
+
+`reprocase compare` 使用**稳定指纹**（类型 + URL 路径 + 错误签名）匹配发现：随机 ID、
+时间戳与易变查询参数不会造成虚假差异。只有当当前扫描确实覆盖了该页面时才标记
+**已解决** —— 覆盖率缩水时标记为*未确认*，绝不宣称已修复。输出 `compare.json`
+与自包含的 `compare.html`。
+
+## 常见问题与排查
+
+- **"Refusing to scan non-local host"** —— 仅允许扫描 localhost；扫描其他主机需写入
+  `allowedDomains`（这是授权门槛，不是缺陷）。
+- **浏览器缺失 / 安装失败** —— 运行 `npx reprocase doctor`，会打印确切路径与修复命令。
+- **没有探索到按钮** —— 查看报告中的 *Exploration log*：命中危险词（pay、delete、run
+  等）的按钮会被只读策略跳过；可用 `exploration.allowSelectors` 精确授权测试控件。
+- **已修复的故障显示"unconfirmed resolved"** —— 比较扫描未覆盖该页面；用与基线相同的
+  范围重扫后再比较。
+- **SPA 路由出现重复发现** —— 深链接会重新渲染应用；同一 JS 故障以其自身 URL 指纹
+  报告属预期行为。
+- **Node 版本** —— 推荐 20 或 22（CI 已测）；18 可用。
 
 ## 默认安全与隐私
 

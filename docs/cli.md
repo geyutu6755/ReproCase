@@ -4,9 +4,40 @@
 reprocase [command]
 
 Commands:
-  scan  Scan a website and generate verified findings, evidence and reproducible tests.
-  demo  Scan the bundled demo website (with four planted faults) and produce a full report.
+  scan     Scan a website and generate verified findings, evidence and reproducible tests.
+  demo     Scan the bundled demo website (with four planted faults) and produce a full report.
+  init     Create a starter reprocase.config.json in the current directory.
+  doctor   Diagnose the environment (Node, Chromium, config, target reachability).
+  compare  Diff two scan results by stable fingerprint: new / resolved / persistent.
 ```
+
+## `reprocase init`
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `-u, --entry <url>` | `http://127.0.0.1:3000/` | Entry URL to prefill |
+| `-o, --out <path>` | `reprocase.config.json` | Config file path to write |
+| `--force` | — | Overwrite an existing config |
+
+Refuses to overwrite without `--force`. Validates the generated config before writing.
+
+## `reprocase doctor`
+
+Checks (each with a `fix:` hint when failing): Node.js version, Playwright Chromium presence,
+config validity, scan-target reachability, output writability. Exit `0` when no check fails
+(warnings do not fail), `1` otherwise.
+
+## `reprocase compare <baseline> <current>`
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `-o, --out <dir>` | `reprocase-compare` | Output directory (`compare.json`, `compare.html`) |
+| `--fail-on <mode>` | — | `new`: exit 1 when new findings exist; `any`: exit 1 on any difference |
+
+Matching uses **stable fingerprints** (type + URL path + error signature): random ids,
+timestamps and volatile query parameters are ignored. A finding is only called **resolved**
+when the current scan covered its page — shrunk coverage produces *unconfirmed* entries and a
+coverage warning, never a claimed fix.
 
 ## `reprocase scan`
 

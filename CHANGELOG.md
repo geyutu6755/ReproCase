@@ -4,6 +4,58 @@ All notable changes to ReproCase are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.2.0] — 2026-11-01
+
+Productization release: workflow commands, SPA-aware exploration, a three-tier interaction
+policy, scan comparison and a report upgrade. Built on top of the v0.1.1 security fixes.
+
+### Added
+
+- **`reprocase init`** — writes a validated starter config; refuses to overwrite without `--force`.
+- **`reprocase doctor`** — environment diagnostics (Node version, Chromium presence, config
+  validity, scan-target reachability, output writability) with concrete `fix:` hints; exit `1`
+  only on real failures.
+- **`reprocase compare <baseline> <current>`** — diffs two scans by **stable fingerprint**
+  (type + URL path + error signature); volatile ids, timestamps and query parameters are
+  ignored. Resolved findings require the current scan to have covered their page — shrunk
+  coverage is marked **unconfirmed**, never claimed as a fix. Emits `compare.json` and a
+  self-contained `compare.html`; `--fail-on new|any` for CI.
+- **SPA support:** same-document (`pushState`/`replaceState`) transitions no longer abandon the
+  page — exploration continues through the remaining buttons and the final URL is queued as a
+  deep-link check (server fallback required for 200s). Real navigations are distinguished via a
+  document-load counter instead of URL-change heuristics alone.
+- **Three-tier interaction policy:** hard-dangerous keywords (pay, delete, logout, submit, ...)
+  are never clickable; soft keywords (run, execute, launch, install, order, cancel) are skipped
+  unless the exact control is authorized via the new `exploration.allowSelectors` config;
+  `exploration.denySelectors` excludes controls outright.
+- **Exploration log:** every considered control is recorded (`explored`, `navigated`,
+  `forbidden`, `skipped-risky`, `skipped-denied`, `not-covered`, `click-failed`,
+  `skipped-off-scope`) and shipped in `result.json` + a report section — skipped and uncovered
+  interactions are visible instead of silent.
+- **Finding stability** (`stable` / `intermittent` / `unreproducible`) measured by the
+  verification pass; steps record their locator strategy (`id` / `testid` / `aria-label` /
+  `css-path`).
+- **Report UX:** sort findings (severity / status / type / reproducibility), one-click
+  **Copy issue text** per finding, exploration log section; stability chip on findings.
+- **Evidence privacy:** CI and GitHub Pages workflows strip `artifacts/traces` before any
+  upload; the report shows a review-before-sharing warning wherever traces/screenshots are
+  attached (traces contain unredacted network traffic by design).
+- npm pack verified end-to-end: tarball → isolated directory install → `npx reprocase` runs
+  (`--version`, `init`, `demo`).
+
+### Fixed
+
+- Document observations use the **response URL as ground truth** — a race could attribute a
+  404 page-load-failure to `about:blank` and suppress it via the scope guard (false negative).
+- Out-of-scope hardening: observations from pages dragged outside the scan origin by redirects
+  are suppressed and logged.
+
+### Verification
+
+81 tests (58 unit + 23 integration/e2e) including: SPA transition regression, coverage-aware
+compare, init/doctor/pack end-to-end, red/green reproduction tests, full-artifact privacy sweep
+(0 secrets in JSON/HTML/Markdown/specs), npm audit 0.
+
 ## [0.1.1] — 2026-11-01
 
 Security-fix release. All changes were produced and verified by the
@@ -105,5 +157,6 @@ First verified release.
 - No accessibility, performance, or visual-regression coverage beyond horizontal overflow.
 - Single-browser (Chromium) at this stage; Firefox/WebKit untested.
 
+[0.2.0]: https://github.com/geyutu6755/ReproCase/releases/tag/v0.2.0
 [0.1.1]: https://github.com/geyutu6755/ReproCase/releases/tag/v0.1.1
 [0.1.0]: https://github.com/geyutu6755/ReproCase/releases/tag/v0.1.0
