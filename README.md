@@ -25,6 +25,10 @@ Every finding is labelled **verified** (reproduced in independent browser runs) 
 (observed once but not proven reproducible). ReproCase never invents results, never judges
 business logic, and always lists what it did **not** check.
 
+![Report overview](docs/img/report-desktop.png)
+![Finding detail with evidence and reproduction steps](docs/img/report-finding.png)
+![Mobile layout](docs/img/report-mobile.png)
+
 ## Quick start
 
 ```bash
@@ -34,11 +38,14 @@ cd ReproCase && npm install && npx playwright install chromium && npm run build
 npx reprocase demo            # writes reprocase-demo-report/report.html and opens it
 ```
 
-Scan any site you are authorized to test:
+Start a real project:
 
 ```bash
+npx reprocase init            # writes a starter reprocase.config.json (refuses to overwrite)
+npx reprocase doctor          # environment check: Node, Chromium, config, target, writability
+npx reprocase scan            # scan the configured entry, write the full report bundle
 npx reprocase scan --url http://localhost:3000/ --out my-report
-npx reprocase scan --config reprocase.config.json --fail-on verified
+npx reprocase compare before/result.json after/result.json   # new / resolved / persistent
 ```
 
 > Exit codes: `0` no findings at/above threshold · `1` findings exist · `2` scan failed
@@ -64,6 +71,29 @@ my-report/
 The generated Playwright tests **assert the fault is still present**: they pass while the bug
 exists (proving stable reproduction) and fail once you fix it — the failure tells you to swap in
 the commented-out "after fix" assertion, turning the file into a permanent regression guard.
+
+## Comparison across scans
+
+`reprocase compare` matches findings by **stable fingerprint** (type + URL path + error
+signature), so volatile ids, timestamps and query strings never create phantom diffs. A fault is
+only reported **resolved** when the current scan actually covered its page — shrunk coverage is
+marked *unconfirmed*, never claimed as a fix. Output: `compare.json` + a self-contained
+`compare.html`.
+
+## FAQ & troubleshooting
+
+- **"Refusing to scan non-local host"** — ReproCase only scans localhost unless you list the
+  host in `allowedDomains`. That is the authorization gate, not a bug.
+- **`npx playwright install chromium` fails / browser missing** — run `npx reprocase doctor`;
+  it prints the exact path it looked at and the fix command.
+- **No buttons were explored** — check the *Exploration log* section in the report: buttons
+  matching risky keywords (pay, delete, run, ...) are skipped by the read-only-first policy.
+  Precisely authorize test controls via `exploration.allowSelectors` in the config.
+- **A fault I fixed still shows as "unconfirmed resolved"** — the comparison scan did not visit
+  that page. Rerun with the same scope as the baseline, then compare again.
+- **SPA routes show up twice** — a deep link re-renders the app; the same JS fault is reported
+  under its own URL fingerprint by design.
+- **Node version** — Node 20 or 22 (CI-tested); 18 works.
 
 ## Safety & privacy by default
 

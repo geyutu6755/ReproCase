@@ -9,6 +9,8 @@ import { Scanner } from './scanner.js';
 import { generateTests } from './generate-tests.js';
 import { writeReports } from './report/write.js';
 import { startStaticServer } from './dev-server.js';
+import { collectDoctorChecks, printDoctorReport, runInit } from './setup.js';
+import { runCompare } from './compare.js';
 import { log } from './util/log.js';
 import { VERSION } from './version.js';
 import type { ScanResult } from './types.js';
@@ -208,6 +210,82 @@ program
   .option('-q, --quiet', 'only print the final summary')
   .action(async (opts: DemoCliOptions) => {
     await runDemo(opts);
+  });
+
+program
+  .command('init')
+  .description('Create a starter reprocase.config.json in the current directory.')
+  .option('-u, --entry <url>', 'entry URL to prefill (default: http://127.0.0.1:3000/)')
+  .option('-o, --out <path>', 'config file path to write', 'reprocase.config.json')
+  .option('--force', 'overwrite an existing config file')
+  .action(async (opts: { entry?: string; out: string; force?: boolean }) => {
+    const file = runInit(opts);
+    if (file) {
+      log.out('');
+      log.out(`Starter config written to ${file}`);
+      log.out('Next steps:');
+      log.out('  1. Edit "entry" to point at the site you are authorized to test.');
+      log.out('     Scanning anything beyond localhost requires listing its host in "allowedDomains".');
+      log.out('  2. npx reprocase doctor        # verify the environment');
+      log.out('  3. npx reprocase scan          # run your first scan');
+    }
+    process.exitCode = 0;
+  });
+
+program
+  .command('doctor')
+  .description(
+    'Diagnose the environment: Node version, Chromium browser, config file, scan target reachability and output writability.'
+  )
+  .action(async () => {
+    const checks = await collectDoctorChecks();
+    const healthy = printDoctorReport(checks);
+    process.exitCode = healthy ? 0 : 1;
+  });
+
+program
+  .command('compare <baseline> <current>')
+  .description(
+    'Compare two scan results (result.json files) by stable fingerprint: new, resolved (coverage-aware) and persistent findings.'
+  )
+  .option('-o, --out <dir>', 'output directory for compare.json / compare.html', 'reprocase-compare')
+  .option('--fail-on <mode>', 'exit 1 on "new" findings or on "any" difference', (v: string) => {
+    if (v !== 'new' && v !== 'any') throw new InvalidArgumentError('expected "new" or "any"');
+    return v;
+  })
+  .action(async (baseline: string, current: string, opts: { out: string; failOn?: string }) => {
+    const result = runCompare(baseline, current, opts.out);
+    const s = result.summary;
+    log.out('');
+    log.out(`ReproCase v${result.tool.version} — comparison finished`);
+    log.out(`Baseline: ${result.baseline.entry} (${result.baseline.pagesVisited} pages, ${result.baseline.startedAt})`);
+    log.out(`Current:  ${result.current.entry} (${result.current.pagesVisited} pages, ${result.current.startedAt})`);
+    log.out('');
+    log.out(`New:        ${s.newCount}`);
+    log.out(
+      `Resolved:   ${s.resolvedCount}` +
+        (s.resolvedUnconfirmedCount > 0
+          ? ` (${s.resolvedUnconfirmedCount} unconfirmed — page not covered by the current scan)`
+          : '')
+    );
+    log.out(`Persistent: ${s.persistentCount} (status changed: ${s.statusChangedCount})`);
+    log.out(
+      `Coverage:   +${result.coverage.addedPages.length} page(s), -${result.coverage.removedPages.length} page(s)` +
+        (result.coverage.coverageShrunk ? ' — COVERAGE SHRANK, resolved entries are unconfirmed' : '')
+    );
+    log.out('');
+    log.out(`HTML diff: ${path.join(opts.out, 'compare.html')}`);
+    log.out(`JSON diff: ${path.join(opts.out, 'compare.json')}`);
+    log.out('');
+    if (opts.failOn === 'new' && s.newCount > 0) {
+      log.out(`Exit code 1 — ${s.newCount} new finding(s) (--fail-on new).`);
+      process.exitCode = 1;
+    } else if (opts.failOn === 'any' && s.newCount + s.resolvedCount + s.statusChangedCount > 0) {
+      log.out('Exit code 1 — differences exist (--fail-on any).');
+      process.exitCode = 1;
+    } else {
+      process.exitCode = 0;
+    }
   });
 
 program

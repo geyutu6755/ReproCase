@@ -2,12 +2,24 @@ import type { FindingType, ScanResult } from '../types.js';
 import { VERSION } from '../version.js';
 
 /** Safe to embed inside a <script> block: escapes </, <!-- and line separators. */
-function jsonForScript(data: unknown): string {
+export function jsonForScript(data: unknown): string {
   return JSON.stringify(data)
     .replace(/</g, '\\u003c')
     .replace(/>/g, '\\u003e')
     .replace(/\u2028/g, '\\u2028')
     .replace(/\u2029/g, '\\u2029');
+}
+
+export function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function escapeAttr(s: string): string {
+  return escapeHtml(s);
 }
 
 const CSS = `
@@ -48,6 +60,8 @@ main { max-width: 1080px; margin: 0 auto; padding: 20px 24px 60px; }
 .toolbar input, .toolbar select { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; font: inherit; font-size: 13.5px; color: var(--ink); }
 .toolbar input { flex: 1 1 220px; }
 .count { color: var(--muted); font-size: 13px; margin-left: auto; white-space: nowrap; }
+.copy-btn { font: inherit; font-size: 12px; border: 1px solid var(--line); background: #f8fafc; color: var(--accent); border-radius: 6px; padding: 3px 10px; cursor: pointer; }
+.copy-btn:hover { border-color: var(--accent); }
 .finding { background: var(--card); border: 1px solid var(--line); border-left: 4px solid var(--muted); border-radius: 10px; padding: 16px 18px; margin-bottom: 14px; }
 .finding.critical { border-left-color: var(--critical); }
 .finding.high { border-left-color: var(--high); }
@@ -102,7 +116,7 @@ const CLIENT_JS = `
   var D = window.__REPROCASE_DATA__ || { findings: [], pages: [], summary: {}, stats: {}, notChecked: [] };
   var SEV_ORDER = { critical: 0, high: 1, medium: 2, low: 3 };
   var SEV_COLOR = { critical: '#b91c1c', high: '#c2410c', medium: '#a16207', low: '#64748b' };
-  var state = { q: '', severity: 'all', status: 'all', type: 'all' };
+  var state = { q: '', severity: 'all', status: 'all', type: 'all', sort: 'severity' };
 
   function el(tag, cls, text) {
     var e = document.createElement(tag);
@@ -117,6 +131,59 @@ const CLIENT_JS = `
     if (a.status !== b.status) return a.status === 'verified' ? -1 : 1;
     return (SEV_ORDER[a.severity] - SEV_ORDER[b.severity]) || a.title.localeCompare(b.title);
   });
+
+  function sortFindings(list) {
+    var sorted = list.slice();
+    if (state.sort === 'type') {
+      sorted.sort(function (a, b) { return a.type.localeCompare(b.type) || (SEV_ORDER[a.severity] - SEV_ORDER[b.severity]); });
+    } else if (state.sort === 'status') {
+      sorted.sort(function (a, b) {
+        if (a.status !== b.status) return a.status === 'verified' ? -1 : 1;
+        return (SEV_ORDER[a.severity] - SEV_ORDER[b.severity]) || a.title.localeCompare(b.title);
+      });
+    } else if (state.sort === 'repro') {
+      sorted.sort(function (a, b) {
+        var ra = a.repro.successes / Math.max(1, a.repro.attempts);
+        var rb = b.repro.successes / Math.max(1, b.repro.attempts);
+        return rb - ra || (SEV_ORDER[a.severity] - SEV_ORDER[b.severity]);
+      });
+    } else {
+      sorted.sort(function (a, b) { return (SEV_ORDER[a.severity] - SEV_ORDER[b.severity]) || a.title.localeCompare(b.title); });
+    }
+    return sorted;
+  }
+
+  function issueText(f) {
+    var lines = [];
+    lines.push('## [' + f.severity.toUpperCase() + '] [' + f.status + '] ' + f.title);
+    lines.push('');
+    lines.push('- Type: ' + f.type);
+    lines.push('- ID: ' + f.id);
+    lines.push('- Reproduction: ' + f.repro.successes + '/' + f.repro.attempts + ' verification attempts');
+    lines.push('- Page: ' + f.url);
+    (f.steps || []).forEach(function (s, i) { lines.push((i + 1) + '. ' + s.description + (s.selector ? ' (' + s.selector + ')' : '')); });
+    var ev = evidenceLines(f);
+    if (ev) { lines.push(''); lines.push('~~~text'); lines.push(ev); lines.push('~~~'); }
+    return lines.join('\\n');
+  }
+
+  function copyIssue(f, btn) {
+    var text = issueText(f);
+    function done() { btn.textContent = 'Copied!'; setTimeout(function () { btn.textContent = 'Copy issue text'; }, 1500); }
+    function fallback() {
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      try { document.execCommand('copy'); done(); } catch (e) { btn.textContent = 'Copy failed'; }
+      document.body.removeChild(ta);
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(done, fallback);
+    } else {
+      fallback();
+    }
+  }
 
   function matches(f) {
     if (state.severity !== 'all' && f.severity !== state.severity) return false;
@@ -193,7 +260,7 @@ const CLIENT_JS = `
       document.getElementById('toolbar').style.display = 'none';
       return;
     }
-    findings.forEach(function (f) {
+    sortFindings(findings).forEach(function (f) {
       if (!matches(f)) return;
       visible++;
       var card = el('article', 'finding ' + f.severity);
@@ -202,6 +269,11 @@ const CLIENT_JS = `
       chips.appendChild(chip(f.severity, f.severity));
       chips.appendChild(chip(f.status, f.status));
       chips.appendChild(chip('type', f.type));
+      if (f.stability) chips.appendChild(chip('type', 'stability: ' + f.stability));
+      var copyBtn = el('button', 'copy-btn', 'Copy issue text');
+      copyBtn.type = 'button';
+      copyBtn.addEventListener('click', function () { copyIssue(f, copyBtn); });
+      chips.appendChild(copyBtn);
       card.appendChild(chips);
       card.appendChild(el('h3', null, f.title));
 
@@ -330,6 +402,32 @@ const CLIENT_JS = `
     });
   }
 
+  function renderExploration() {
+    var box = document.getElementById('exploration');
+    var entries = D.exploration || [];
+    if (!entries.length) {
+      box.appendChild(el('div', 'item'));
+      box.lastChild.appendChild(el('span', null, 'No interactive exploration was performed for this scan.'));
+      return;
+    }
+    var colors = {
+      explored: '#065f46', navigated: '#1e40af', forbidden: '#b91c1c', 'skipped-risky': '#92400e',
+      'skipped-denied': '#92400e', 'skipped-off-scope': '#b91c1c', 'not-covered': '#92400e', 'click-failed': '#6b7280'
+    };
+    entries.forEach(function (entry) {
+      var d = el('div', 'item');
+      var head = el('b', null, '');
+      var tag = el('span', null, '[' + entry.outcome + '] ');
+      tag.style.color = colors[entry.outcome] || '#6b7280';
+      head.appendChild(tag);
+      head.appendChild(document.createTextNode(entry.description));
+      d.appendChild(head);
+      var detail = entry.page + (entry.note ? ' — ' + entry.note : '');
+      d.appendChild(el('span', null, detail));
+      box.appendChild(d);
+    });
+  }
+
   function renderFooter() {
     var st = D.stats || {};
     var f = document.getElementById('footer');
@@ -353,7 +451,7 @@ const CLIENT_JS = `
   function wireToolbar() {
     var q = document.getElementById('q');
     q.addEventListener('input', function () { state.q = q.value.trim().toLowerCase(); renderFindings(); });
-    [['sev', 'severity'], ['status', 'status'], ['type', 'type']].forEach(function (pair) {
+    [['sev', 'severity'], ['status', 'status'], ['type', 'type'], ['sort', 'sort']].forEach(function (pair) {
       var sel = document.getElementById(pair[0]);
       sel.addEventListener('change', function () { state[pair[1]] = sel.value; renderFindings(); });
     });
@@ -367,6 +465,7 @@ const CLIENT_JS = `
   wireToolbar();
   renderFindings();
   renderPages();
+  renderExploration();
   renderNotChecked();
   renderFooter();
 })();
@@ -429,6 +528,12 @@ export function renderHtml(result: ScanResult): string {
       <option value="all">all types</option>
       ${typeOptions}
     </select>
+    <select id="sort" aria-label="Sort findings">
+      <option value="severity">sort: severity</option>
+      <option value="status">sort: status</option>
+      <option value="type">sort: type</option>
+      <option value="repro">sort: reproducibility</option>
+    </select>
     <span id="count" class="count"></span>
   </div>
   <section id="findings"></section>
@@ -441,6 +546,9 @@ export function renderHtml(result: ScanResult): string {
     </table>
   </section>
 
+  <h2 class="section">Exploration log</h2>
+  <section id="exploration" class="notchecked"></section>
+
   <h2 class="section">Not checked (out of scope by design)</h2>
   <section id="notchecked" class="notchecked"></section>
 
@@ -452,16 +560,4 @@ export function renderHtml(result: ScanResult): string {
 </body>
 </html>
 `;
-}
-
-function escapeHtml(s: string): string {
-  return s
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
-
-function escapeAttr(s: string): string {
-  return escapeHtml(s);
 }

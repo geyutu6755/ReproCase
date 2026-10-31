@@ -69,85 +69,127 @@ export function measureOverflowInPage(tolerance: number): OverflowMeasurement {
 }
 
 export interface CandidateInfo {
-  kind: 'link' | 'button';
+  kind: 'button';
   selector: string;
-  href?: string;
+  strategy: 'id' | 'testid' | 'aria-label' | 'css-path';
   text: string;
 }
 
+export interface SkippedCandidate {
+  description: string;
+  selector: string;
+  /** forbidden = hard-dangerous keyword; risky = soft keyword without allow; denied = denySelectors match */
+  reason: 'forbidden' | 'risky' | 'denied';
+}
+
+export interface CandidateCollection {
+  candidates: CandidateInfo[];
+  skipped: SkippedCandidate[];
+}
+
+export interface CandidateOptions {
+  max: number;
+  allowSelectors: string[];
+  denySelectors: string[];
+}
+
 /**
- * Collects click candidates that are safe for a read-only-first explorer:
- * visible, enabled, not inside a form, no risky keywords, no popups/downloads.
+ * Collects button candidates for a read-only-first explorer.
+ *
+ * Three-tier policy:
+ *  - HARD-dangerous keywords (pay, delete, logout, submit, ...) are forbidden
+ *    and can never be overridden;
+ *  - SOFT keywords (run, execute, launch, install, order, cancel) are skipped
+ *    unless the exact control is authorized via allowSelectors (CSS matches);
+ *  - denySelectors exclude any matched control outright.
+ *
  * NOTE: fully self-contained — this function runs serialized inside the page,
- * so the risky-keyword regex must live in the function body.
+ * so all regexes and policy logic must live in the function body.
  */
-export function collectCandidatesInPage(max: number): CandidateInfo[] {
-  function cssPath(node: Element): string {
-    if (node.id) return '#' + node.id;
+export function collectCandidatesInPage(opts: CandidateOptions): CandidateCollection {
+  function cssPath(node: Element): { selector: string; strategy: 'id' | 'testid' | 'aria-label' | 'css-path' } {
     const tid =
       node.getAttribute('data-testid') ||
       node.getAttribute('data-test') ||
       node.getAttribute('data-qa');
-    if (tid) return '[data-testid="' + tid.replace(/"/g, '\\"') + '"]';
-    let path = node.tagName.toLowerCase();
+    if (tid) return { selector: '[data-testid="' + tid.replace(/"/g, '\\"') + '"]', strategy: 'testid' };
+    if (node.id) return { selector: '#' + node.id, strategy: 'id' };
     const aria = node.getAttribute('aria-label');
-    if (aria) path += '[aria-label="' + aria.replace(/"/g, '\\"') + '"]';
+    if (aria) {
+      return {
+        selector: node.tagName.toLowerCase() + '[aria-label="' + aria.replace(/"/g, '\\"') + '"]',
+        strategy: 'aria-label'
+      };
+    }
+    let path = node.tagName.toLowerCase();
     const parent = node.parentElement;
     if (parent) {
       const sameTag = Array.from(parent.children).filter((c) => c.tagName === node.tagName);
       if (sameTag.length > 1) path += ':nth-of-type(' + (sameTag.indexOf(node) + 1) + ')';
     }
-    return path;
+    return { selector: path, strategy: 'css-path' };
   }
 
-  const RISKY_ACTION_RE =
-    /(^|[^a-z])(delete|remove|destroy|pay|payment|purchase|buy|checkout|order|subscribe|send|submit|confirm|signout|sign\s?out|logout|log\s?out|cancel|post|publish|upload|transfer|withdraw|install|launch|execute|run)([^a-z]|$)/i;
+  const HARD_RE =
+    /(^|[^a-z])(delete|remove|destroy|pay|payment|purchase|buy|checkout|transfer|withdraw|logout|sign\s?out|subscribe|send|submit|confirm|upload|publish|post)([^a-z]|$)/i;
+  const SOFT_RE = /(^|[^a-z])(run|execute|launch|install|order|cancel)([^a-z]|$)/i;
 
-  const out: CandidateInfo[] = [];
+  const allow = opts.allowSelectors || [];
+  const deny = opts.denySelectors || [];
+  function matchesAny(node: Element, list: string[]): boolean {
+    return list.some((s) => {
+      try {
+        return node.matches(s);
+      } catch {
+        return false;
+      }
+    });
+  }
+
+  const candidates: CandidateInfo[] = [];
+  const skipped: SkippedCandidate[] = [];
   const els = Array.from(
-    document.querySelectorAll('a[href], button, [role="button"], input[type="button"], input[type="submit"]')
+    document.querySelectorAll('button, [role="button"], input[type="button"], input[type="submit"]')
   );
   for (const node of els) {
-    if (out.length >= max) break;
+    if (candidates.length >= opts.max) break;
     if (!(node instanceof HTMLElement)) continue;
     if (node.getClientRects().length === 0) continue;
     const style = getComputedStyle(node);
     if (style.visibility === 'hidden' || style.display === 'none') continue;
     if (node.hasAttribute('disabled') || node.getAttribute('aria-disabled') === 'true') continue;
     // Never touch form controls: submitting or mutating forms is out of scope.
-    if (node.closest('form') && node.tagName !== 'A') continue;
+    if (node.closest('form')) continue;
 
-    if (node.tagName === 'A') {
-      const a = node as HTMLAnchorElement;
-      const href = a.getAttribute('href') || '';
-      if (!href || href.startsWith('#')) continue;
-      if (!/^https?:/i.test(a.href)) continue;
-      if (a.target && a.target !== '_self') continue;
-      if (a.hasAttribute('download')) continue;
-      const text = (a.textContent || '').trim();
-      const label = a.getAttribute('aria-label') || '';
-      if (RISKY_ACTION_RE.test(text) || RISKY_ACTION_RE.test(label)) continue;
-      out.push({ kind: 'link', selector: cssPath(a), href: a.href, text: (text || label).slice(0, 80) });
-    } else {
-      const text = (node.textContent || '').trim();
-      const label =
-        node.getAttribute('aria-label') ||
-        (node as HTMLInputElement).value ||
-        node.getAttribute('title') ||
-        '';
-      const name = node.getAttribute('name') || '';
-      if (
-        RISKY_ACTION_RE.test(text) ||
-        RISKY_ACTION_RE.test(label) ||
-        RISKY_ACTION_RE.test(node.id) ||
-        RISKY_ACTION_RE.test(name)
-      ) {
-        continue;
-      }
-      out.push({ kind: 'button', selector: cssPath(node), text: (text || label).slice(0, 80) });
+    const text = (node.textContent || '').trim();
+    const label =
+      node.getAttribute('aria-label') ||
+      (node as HTMLInputElement).value ||
+      node.getAttribute('title') ||
+      '';
+    const name = node.getAttribute('name') || '';
+    const { selector, strategy } = cssPath(node);
+    const description = 'click button "' + (text || label || selector).slice(0, 80) + '"';
+
+    if (matchesAny(node, deny)) {
+      skipped.push({ description, selector, reason: 'denied' });
+      continue;
     }
+    const hardRisk =
+      HARD_RE.test(text) || HARD_RE.test(label) || HARD_RE.test(node.id) || HARD_RE.test(name);
+    if (hardRisk) {
+      skipped.push({ description, selector, reason: 'forbidden' });
+      continue;
+    }
+    const softRisk =
+      SOFT_RE.test(text) || SOFT_RE.test(label) || SOFT_RE.test(node.id) || SOFT_RE.test(name);
+    if (softRisk && !matchesAny(node, allow)) {
+      skipped.push({ description, selector, reason: 'risky' });
+      continue;
+    }
+    candidates.push({ kind: 'button', selector, strategy, text: (text || label).slice(0, 80) });
   }
-  return out;
+  return { candidates, skipped: skipped.slice(0, 100) };
 }
 
 /**

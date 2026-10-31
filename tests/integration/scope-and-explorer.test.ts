@@ -185,4 +185,67 @@ describe('audit regression: scan scope', () => {
     },
     180_000
   );
+
+  it(
+    'continues exploring after a same-document (SPA) transition and deep-links the final URL',
+    async () => {
+      // Fixture: button 1 performs history.pushState (no document load); the
+      // server hosts the SPA with an index fallback so /app/view1 is openable.
+      // Button 2 throws — it must still be explored AFTER the SPA transition.
+      const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'reprocase-spa-'));
+      fs.writeFileSync(
+        path.join(dir, 'index.html'),
+        `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"></head><body>
+         <button id="spa-nav" type="button">Open view</button>
+         <button id="boom" type="button">Trigger load</button>
+         <script>
+         document.getElementById('spa-nav').addEventListener('click', function () {
+           history.pushState({}, '', '/app/view1');
+         });
+         document.getElementById('boom').addEventListener('click', function () {
+           throw new Error('SpaSecondBoom: fault after SPA transition (v0.2.0 regression)');
+         });
+         </script></body></html>`,
+        'utf8'
+      );
+      const server = await startStaticServer(dir, { spaFallback: true });
+      try {
+        const out = tmpOut();
+        const { config } = resolveConfig({
+          entry: server.url,
+          maxPages: 5,
+          runTimeoutMs: 120_000,
+          verification: { attempts: 1 }
+        });
+        const { result } = await new Scanner(config, out).run();
+
+        const boom = result.findings.find((f) => f.title.includes('SpaSecondBoom'));
+        expect(boom, 'fault behind the SPA transition must still be explored').toBeDefined();
+        expect(boom!.status).toBe('verified');
+
+        // The deep-link check queued and opened /app/view1 (server fallback 200).
+        expect(result.pages.some((p) => p.url.includes('/app/view1'))).toBe(true);
+        // The deep link re-renders the app, so the same JS fault may be
+        // observed again under its own URL fingerprint — expected. What must
+        // NOT happen is a load/resource false positive on a healthy fallback.
+        expect(
+          result.findings.filter(
+            (f) =>
+              ['page-load-failure', 'resource-load-failure', 'broken-internal-link'].includes(f.type) &&
+              JSON.stringify(f).includes('/app/')
+          ),
+          'SPA deep link must not produce load/resource false positives on a healthy fallback'
+        ).toEqual([]);
+
+        // The exploration log records the same-document transition explicitly.
+        const spaEntry = result.exploration.find((e) => (e.note || '').includes('same-document navigation'));
+        expect(spaEntry, 'same-document navigation must be logged').toBeDefined();
+        expect(spaEntry!.outcome).toBe('explored');
+      } finally {
+        await server.close();
+        fs.rmSync(dir, { recursive: true, force: true });
+      }
+    },
+    180_000
+  );
 });

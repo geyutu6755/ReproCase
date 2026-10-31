@@ -40,6 +40,17 @@ See [reprocase.config.example.json](../reprocase.config.example.json) for a copy
     "fillForms": false
   },
 
+  // Structured exploration policy (three tiers):
+  //  - hard-dangerous keywords (pay, delete, logout, submit, ...) are NEVER clickable;
+  //  - soft keywords (run, execute, launch, install, order, cancel) are skipped
+  //    unless the exact control matches an allowSelectors entry;
+  //  - denySelectors exclude matched controls outright.
+  // Selectors are standard CSS (matched with el.matches()).
+  "exploration": {
+    "allowSelectors": ["#run-report-btn"],
+    "denySelectors": ["#legacy-sync-button"]
+  },
+
   // Evidence capture. traces:"auto" captures Playwright traces for localhost
   // targets only; set true/false to override.
   // NOTE: traces record raw network traffic (including unredacted URLs and

@@ -1,0 +1,407 @@
+{
+  "tool": {
+    "name": "ReproCase",
+    "version": "0.1.1"
+  },
+  "startedAt": "2026-10-31T17:17:43.524Z",
+  "finishedAt": "2026-10-31T17:18:00.795Z",
+  "target": {
+    "entry": "http://127.0.0.1:50536/",
+    "allowedDomains": [
+      "127.0.0.1"
+    ]
+  },
+  "config": {
+    "entry": "http://127.0.0.1:50536/",
+    "allowedDomains": [
+      "127.0.0.1"
+    ],
+    "maxPages": 15,
+    "maxDepth": 3,
+    "maxActionsPerPage": 10,
+    "navigationTimeoutMs": 15000,
+    "runTimeoutMs": 180000,
+    "requestDelayMs": 150,
+    "viewports": {
+      "desktop": {
+        "width": 1280,
+        "height": 720
+      },
+      "mobile": {
+        "width": 390,
+        "height": 844
+      }
+    },
+    "allowedActions": {
+      "clickLinks": true,
+      "clickButtons": true,
+      "fillForms": false
+    },
+    "exploration": {
+      "allowSelectors": [],
+      "denySelectors": []
+    },
+    "capture": {
+      "screenshots": true,
+      "traces": "auto"
+    },
+    "verification": {
+      "attempts": 3
+    },
+    "report": {
+      "redactQuery": true
+    }
+  },
+  "stats": {
+    "pagesVisited": 9,
+    "actionsPerformed": 3,
+    "requestsObserved": 20,
+    "linksChecked": 8,
+    "durationMs": 17271,
+    "findingsRaw": 5,
+    "findingsAfterDedupe": 4
+  },
+  "findings": [
+    {
+      "id": "fp-880ae228",
+      "fingerprint": "js-exception|http://127.0.0.1:50536/js-error.html|Boom: intentional demo crash (ReproCase demo fault #1)",
+      "type": "js-exception",
+      "severity": "high",
+      "status": "verified",
+      "confidence": 1,
+      "title": "Uncaught JS exception: Boom: intentional demo crash (ReproCase demo fault #1)",
+      "url": "http://127.0.0.1:50536/js-error.html",
+      "pages": [
+        "http://127.0.0.1:50536/js-error.html"
+      ],
+      "evidence": {
+        "message": "Boom: intentional demo crash (ReproCase demo fault #1)",
+        "stack": "Error: Boom: intentional demo crash (ReproCase demo fault #1)\n    at HTMLButtonElement.<anonymous> (http://127.0.0.1:50536/js-error.html:27:15)"
+      },
+      "steps": [
+        {
+          "action": "click",
+          "description": "click button \"Trigger JavaScript error\"",
+          "selector": "#crash-btn",
+          "locatorStrategy": "id"
+        }
+      ],
+      "repro": {
+        "attempts": 3,
+        "successes": 3,
+        "observedCount": 1
+      },
+      "screenshots": [
+        "artifacts/screenshots/page-000.png"
+      ],
+      "traces": [
+        "artifacts/traces/trace-3f685514.zip"
+      ],
+      "plan": {
+        "kind": "js-error",
+        "url": "http://127.0.0.1:50536/js-error.html",
+        "message": "Boom: intentional demo crash (ReproCase demo fault #1)",
+        "steps": [
+          {
+            "action": "click",
+            "description": "click button \"Trigger JavaScript error\"",
+            "selector": "#crash-btn",
+            "locatorStrategy": "id"
+          }
+        ]
+      },
+      "firstSeenAt": "2026-10-31T17:17:48.293Z",
+      "lastSeenAt": "2026-10-31T17:17:48.293Z",
+      "stability": "stable",
+      "generatedTest": "generated-tests/reprocase-fp-880ae228-01.spec.ts"
+    },
+    {
+      "id": "fp-172d04a4",
+      "fingerprint": "broken-internal-link|http://127.0.0.1:50536/missing-page.html",
+      "type": "broken-internal-link",
+      "severity": "medium",
+      "status": "verified",
+      "confidence": 1,
+      "title": "Broken internal link -> http://127.0.0.1:50536/missing-page.html",
+      "url": "http://127.0.0.1:50536/broken-link.html",
+      "pages": [
+        "http://127.0.0.1:50536/broken-link.html"
+      ],
+      "evidence": {
+        "statusCode": 404,
+        "resourceUrl": "http://127.0.0.1:50536/missing-page.html"
+      },
+      "steps": [],
+      "repro": {
+        "attempts": 3,
+        "successes": 3,
+        "observedCount": 1
+      },
+      "screenshots": [],
+      "traces": [],
+      "plan": {
+        "kind": "link-status",
+        "url": "http://127.0.0.1:50536/broken-link.html",
+        "targetUrl": "http://127.0.0.1:50536/missing-page.html",
+        "statusCode": 404
+      },
+      "firstSeenAt": "2026-10-31T17:17:55.288Z",
+      "lastSeenAt": "2026-10-31T17:17:55.288Z",
+      "stability": "stable",
+      "generatedTest": "generated-tests/reprocase-fp-172d04a4-02.spec.ts"
+    },
+    {
+      "id": "fp-ade7f67f",
+      "fingerprint": "resource-load-failure|http://127.0.0.1:50536/assets/missing-logo.png|404",
+      "type": "resource-load-failure",
+      "severity": "medium",
+      "status": "verified",
+      "confidence": 1,
+      "title": "First-party resource failed to load: http://127.0.0.1:50536/assets/missing-logo.png (HTTP 404)",
+      "url": "http://127.0.0.1:50536/broken-image.html",
+      "pages": [
+        "http://127.0.0.1:50536/broken-image.html"
+      ],
+      "evidence": {
+        "statusCode": 404,
+        "resourceUrl": "http://127.0.0.1:50536/assets/missing-logo.png"
+      },
+      "steps": [],
+      "repro": {
+        "attempts": 3,
+        "successes": 3,
+        "observedCount": 1
+      },
+      "screenshots": [
+        "artifacts/screenshots/page-003.png"
+      ],
+      "traces": [
+        "artifacts/traces/trace-b39eefe8.zip"
+      ],
+      "plan": {
+        "kind": "resource-status",
+        "url": "http://127.0.0.1:50536/broken-image.html",
+        "targetUrl": "http://127.0.0.1:50536/assets/missing-logo.png",
+        "statusCode": 404
+      },
+      "firstSeenAt": "2026-10-31T17:17:51.849Z",
+      "lastSeenAt": "2026-10-31T17:17:51.849Z",
+      "stability": "stable",
+      "generatedTest": "generated-tests/reprocase-fp-ade7f67f-03.spec.ts"
+    },
+    {
+      "id": "fp-fba8bc59",
+      "fingerprint": "horizontal-overflow|http://127.0.0.1:50536/overflow.html|mobile",
+      "type": "horizontal-overflow",
+      "severity": "low",
+      "status": "verified",
+      "confidence": 1,
+      "title": "Horizontal overflow on mobile viewport",
+      "url": "http://127.0.0.1:50536/overflow.html",
+      "pages": [
+        "http://127.0.0.1:50536/overflow.html"
+      ],
+      "evidence": {
+        "viewport": "mobile",
+        "scrollWidth": 736,
+        "clientWidth": 390,
+        "offenders": [
+          {
+            "selector": "div",
+            "tag": "div",
+            "right": 736,
+            "width": 720,
+            "snippet": "<div class=\"wide-panel\">720px fixed-width panel — overflows phones, fits desktops</div>"
+          }
+        ]
+      },
+      "steps": [],
+      "repro": {
+        "attempts": 3,
+        "successes": 3,
+        "observedCount": 2
+      },
+      "screenshots": [
+        "artifacts/screenshots/page-001.png",
+        "artifacts/screenshots/page-002.png"
+      ],
+      "traces": [
+        "artifacts/traces/trace-ae325f50.zip"
+      ],
+      "plan": {
+        "kind": "overflow",
+        "url": "http://127.0.0.1:50536/overflow.html",
+        "viewport": "mobile",
+        "steps": []
+      },
+      "firstSeenAt": "2026-10-31T17:17:51.033Z",
+      "lastSeenAt": "2026-10-31T17:17:51.482Z",
+      "stability": "stable",
+      "generatedTest": "generated-tests/reprocase-fp-fba8bc59-04.spec.ts"
+    }
+  ],
+  "pages": [
+    {
+      "url": "http://127.0.0.1:50536/",
+      "depth": 0,
+      "actions": 0,
+      "jsErrors": 0,
+      "resourceErrors": 0,
+      "overflow": false,
+      "durationMs": 1040,
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:50536/clean.html",
+      "depth": 1,
+      "actions": 1,
+      "jsErrors": 0,
+      "resourceErrors": 0,
+      "overflow": false,
+      "durationMs": 1299,
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:50536/clean-2.html",
+      "depth": 1,
+      "actions": 0,
+      "jsErrors": 0,
+      "resourceErrors": 0,
+      "overflow": false,
+      "durationMs": 848,
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:50536/js-error.html",
+      "depth": 1,
+      "actions": 2,
+      "jsErrors": 1,
+      "resourceErrors": 0,
+      "overflow": false,
+      "durationMs": 1790,
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:50536/broken-link.html",
+      "depth": 1,
+      "actions": 0,
+      "jsErrors": 0,
+      "resourceErrors": 0,
+      "overflow": false,
+      "durationMs": 843,
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:50536/overflow.html",
+      "depth": 1,
+      "actions": 0,
+      "jsErrors": 0,
+      "resourceErrors": 0,
+      "overflow": true,
+      "durationMs": 929,
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:50536/broken-image.html",
+      "depth": 1,
+      "actions": 0,
+      "jsErrors": 0,
+      "resourceErrors": 1,
+      "overflow": false,
+      "durationMs": 885,
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:50536/index.html",
+      "depth": 2,
+      "actions": 0,
+      "jsErrors": 0,
+      "resourceErrors": 0,
+      "overflow": false,
+      "durationMs": 913,
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:50536/missing-page.html",
+      "depth": 2,
+      "actions": 0,
+      "jsErrors": 0,
+      "resourceErrors": 0,
+      "overflow": false,
+      "durationMs": 834,
+      "status": 404
+    }
+  ],
+  "exploration": [
+    {
+      "page": "http://127.0.0.1:50536/clean.html",
+      "description": "click button \"Toggle highlight\"",
+      "selector": "#toggle-btn",
+      "outcome": "explored"
+    },
+    {
+      "page": "http://127.0.0.1:50536/js-error.html",
+      "description": "click button \"Trigger JavaScript error\"",
+      "selector": "#crash-btn",
+      "outcome": "explored"
+    },
+    {
+      "page": "http://127.0.0.1:50536/js-error.html",
+      "description": "click button \"Say hello (harmless)\"",
+      "selector": "#hello-btn",
+      "outcome": "explored"
+    },
+    {
+      "page": "about:blank",
+      "description": "suppressed page-load-failure observation from outside the scan scope",
+      "outcome": "skipped-off-scope"
+    }
+  ],
+  "notChecked": [
+    {
+      "area": "Forms and form submission",
+      "reason": "Read-only-first exploration never types into or submits forms, so form flows are not exercised."
+    },
+    {
+      "area": "Authenticated / session-specific pages",
+      "reason": "ReproCase explores without credentials; pages behind logins are out of reach."
+    },
+    {
+      "area": "Third-party resource failures",
+      "reason": "Observed but not reported: failures on hosts outside the allowed domains are excluded on purpose."
+    },
+    {
+      "area": "Visual layout beyond horizontal overflow",
+      "reason": "No pixel comparison or visual regression testing is performed."
+    },
+    {
+      "area": "Accessibility",
+      "reason": "Not audited in this version."
+    },
+    {
+      "area": "Performance",
+      "reason": "No timing budgets are evaluated."
+    },
+    {
+      "area": "Backend / business logic correctness",
+      "reason": "Only client-observable behaviour is judged. ReproCase never decides whether business outcomes are correct."
+    }
+  ],
+  "entryUnreachable": false,
+  "summary": {
+    "verified": 4,
+    "suspected": 0,
+    "bySeverity": {
+      "critical": 0,
+      "high": 1,
+      "medium": 2,
+      "low": 1
+    },
+    "byType": {
+      "js-exception": 1,
+      "broken-internal-link": 1,
+      "resource-load-failure": 1,
+      "horizontal-overflow": 1
+    }
+  }
+}

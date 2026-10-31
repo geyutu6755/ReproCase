@@ -136,6 +136,8 @@ export async function verifyFindings(
     }
     finding.repro.attempts = attempts;
     finding.repro.successes = successes;
+    finding.stability =
+      successes === attempts ? 'stable' : successes > 0 ? 'intermittent' : 'unreproducible';
     if (successes > 0) {
       // Console errors stay 'suspected' by design: a reproduced console.error
       // is still only informational, not proof of a fault.

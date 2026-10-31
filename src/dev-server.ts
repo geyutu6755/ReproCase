@@ -34,12 +34,24 @@ export interface StaticServer {
   close(): Promise<void>;
 }
 
+export interface StaticServerOptions {
+  /**
+   * Serve index.html for extension-less unknown paths (SPA hosting mode).
+   * Default off: unknown paths return real 404s so broken-link and
+   * page-load-failure detection works.
+   */
+  spaFallback?: boolean;
+}
+
 /**
  * Minimal static file server used by `reprocase demo` and the test suite.
  * Intentionally returns proper 404s (no SPA fallback) so broken links and
  * missing resources are detectable.
  */
-export async function startStaticServer(rootDir: string): Promise<StaticServer> {
+export async function startStaticServer(
+  rootDir: string,
+  opts: StaticServerOptions = {}
+): Promise<StaticServer> {
   const root = path.resolve(rootDir);
   const server = http.createServer((req, res) => {
     try {
@@ -56,6 +68,20 @@ export async function startStaticServer(rootDir: string): Promise<StaticServer> 
         stat = fs.statSync(filePath, { throwIfNoEntry: false });
       }
       if (!stat) {
+        const extless = !path.extname(urlPath);
+        if (opts.spaFallback && extless) {
+          const index = path.join(root, 'index.html');
+          const indexStat = fs.statSync(index, { throwIfNoEntry: false });
+          if (indexStat) {
+            res.writeHead(200, {
+              'Content-Type': MIME['.html'],
+              'Content-Length': indexStat.size,
+              'Cache-Control': 'no-store'
+            });
+            fs.createReadStream(index).pipe(res);
+            return;
+          }
+        }
         res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
         res.end('404 Not Found: ' + urlPath);
         return;
