@@ -67,10 +67,12 @@ builds a declarative replay plan (page URL, expected message/status, click path,
 The verifier and the Playwright test generator both execute that same plan — verification and
 generated tests cannot drift apart.
 
-**Read-only-first exploration.** No form filling by default; dialogs always dismissed;
-candidates filtered by visibility, form-proximity, popups/downloads and a risky-keyword
-deny-list (pay/delete/submit/send/logout/...). All budgets (pages, depth, actions, time,
-delay) are enforced in the crawl loop.
+**Read-only-first exploration.** Exploration clicks buttons only — `<a>` destinations are
+traversed by the crawl queue, which keeps the action budget on interactive elements instead of
+header navs. No form filling by default; dialogs always dismissed; candidates filtered by
+visibility, form-proximity, popups/downloads and a risky-keyword deny-list
+(pay/delete/submit/send/logout/...). The scan scope is pinned to the entry origin (host **and**
+port). All budgets (pages, depth, actions, time, delay) are enforced in the crawl loop.
 
 **Privacy.** Non-local hosts require an explicit `allowedDomains` entry (the authorization
 gate). Trace capture defaults to `auto` = localhost only. Query parameters with sensitive

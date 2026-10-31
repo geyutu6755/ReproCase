@@ -7,7 +7,7 @@ import type {
   Step,
   ViewportLabel
 } from './types.js';
-import { normalizeUrl, redactUrl, sha1Short, trimStack } from './util/net.js';
+import { normalizeUrl, redactSecretsInText, redactUrl, sha1Short, trimStack } from './util/net.js';
 
 export interface ObservationInput {
   type: FindingType;
@@ -76,38 +76,68 @@ export function titleFor(obs: ObservationInput): string {
   }
 }
 
-function planFor(obs: ObservationInput): ReproPlan {
+function planFor(obs: ObservationInput, redactQuery: boolean): ReproPlan {
   const e = obs.evidence;
+  const pageUrl = redactUrl(normalizeUrl(obs.url), redactQuery);
   switch (obs.type) {
     case 'js-exception':
-      return { kind: 'js-error', url: obs.url, message: norm(e.message), steps: obs.steps };
+      return {
+        kind: 'js-error',
+        url: pageUrl,
+        message: redactSecretsInText(norm(e.message)),
+        steps: obs.steps
+      };
     case 'console-error':
-      return { kind: 'console-error', url: obs.url, message: norm(e.message), steps: obs.steps };
+      return {
+        kind: 'console-error',
+        url: pageUrl,
+        message: redactSecretsInText(norm(e.message)),
+        steps: obs.steps
+      };
     case 'page-load-failure':
       return {
         kind: 'goto-status',
-        url: normalizeUrl(obs.targetUrl ?? obs.url),
+        url: redactUrl(normalizeUrl(obs.targetUrl ?? obs.url), redactQuery),
         statusCode: e.statusCode,
         message: norm(e.failureText) || undefined
       };
     case 'resource-load-failure':
       return e.statusCode
-        ? { kind: 'resource-status', url: obs.url, targetUrl: normalizeUrl(e.resourceUrl ?? ''), statusCode: e.statusCode }
-        : { kind: 'resource-request-error', url: obs.url, targetUrl: normalizeUrl(e.resourceUrl ?? '') };
+        ? {
+            kind: 'resource-status',
+            url: pageUrl,
+            targetUrl: redactUrl(normalizeUrl(e.resourceUrl ?? ''), redactQuery),
+            statusCode: e.statusCode
+          }
+        : {
+            kind: 'resource-request-error',
+            url: pageUrl,
+            targetUrl: redactUrl(normalizeUrl(e.resourceUrl ?? ''), redactQuery)
+          };
     case 'broken-internal-link':
-      return { kind: 'link-status', url: obs.url, targetUrl: normalizeUrl(obs.targetUrl ?? ''), statusCode: e.statusCode };
+      return {
+        kind: 'link-status',
+        url: pageUrl,
+        targetUrl: redactUrl(normalizeUrl(obs.targetUrl ?? ''), redactQuery),
+        statusCode: e.statusCode
+      };
     case 'horizontal-overflow':
-      return { kind: 'overflow', url: obs.url, viewport: (e.viewport ?? 'desktop') as ViewportLabel };
+      return {
+        kind: 'overflow',
+        url: pageUrl,
+        viewport: (e.viewport ?? 'desktop') as ViewportLabel,
+        steps: obs.steps
+      };
   }
 }
 
 function cleanEvidence(e: Evidence, redactQuery: boolean): Evidence {
   const out: Evidence = {};
-  if (e.message) out.message = norm(e.message);
-  if (e.stack) out.stack = trimStack(e.stack);
+  if (e.message) out.message = redactSecretsInText(norm(e.message));
+  if (e.stack) out.stack = redactSecretsInText(trimStack(e.stack) ?? '');
   if (e.statusCode !== undefined) out.statusCode = e.statusCode;
   if (e.resourceUrl) out.resourceUrl = redactUrl(normalizeUrl(e.resourceUrl), redactQuery);
-  if (e.failureText) out.failureText = norm(e.failureText);
+  if (e.failureText) out.failureText = redactSecretsInText(norm(e.failureText));
   if (e.selector) out.selector = e.selector;
   if (e.viewport) out.viewport = e.viewport;
   if (e.scrollWidth !== undefined) out.scrollWidth = e.scrollWidth;
@@ -172,7 +202,7 @@ export class FindingCollector {
       repro: { attempts: 0, successes: 0, observedCount: 1 },
       screenshots: obs.screenshot ? [obs.screenshot] : [],
       traces: [],
-      plan: planFor(obs),
+      plan: planFor(obs, this.redactQuery),
       firstSeenAt: now,
       lastSeenAt: now
     };

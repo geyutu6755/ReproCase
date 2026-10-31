@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="220" height="110" viewBox="0 0 220 110" role="img" aria-label="TaskFlow diagram">
+  <rect x="0" y="0" width="220" height="110" rx="12" fill="#24315e"/>
+  <rect x="16" y="20" width="56" height="70" rx="6" fill="#35447f"/>
+  <rect x="82" y="20" width="56" height="70" rx="6" fill="#35447f"/>
+  <rect x="148" y="20" width="56" height="70" rx="6" fill="#35447f"/>
+  <circle cx="44" cy="42" r="9" fill="#8be3b0"/>
+  <circle cx="110" cy="42" r="9" fill="#ffd479"/>
+  <circle cx="176" cy="42" r="9" fill="#ff8f8f"/>
+  <text x="44" y="78" text-anchor="middle" fill="#dbe4ff" font-family="system-ui, sans-serif" font-size="10">todo</text>
+  <text x="110" y="78" text-anchor="middle" fill="#dbe4ff" font-family="system-ui, sans-serif" font-size="10">doing</text>
+  <text x="176" y="78" text-anchor="middle" fill="#dbe4ff" font-family="system-ui, sans-serif" font-size="10">done</text>
+</svg>

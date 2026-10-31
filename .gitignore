@@ -6,5 +6,6 @@ site/
 test-results/
 playwright-report/
 .e2e-*/
+audit/.out-*/
 *.log
 .DS_Store

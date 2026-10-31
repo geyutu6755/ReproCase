@@ -64,6 +64,10 @@ function specFor(
 
   if (plan.kind === 'overflow') {
     const usedViewport = plan.viewport === 'mobile' ? viewports.mobile : viewports.desktop;
+    const clicks = (plan.steps ?? [])
+      .filter((s) => s.action === 'click' && s.selector)
+      .map((s) => `  await page.click(${json(s.selector!)});`)
+      .join('\n');
     return [
       header,
       `test.use({ viewport: { width: ${usedViewport.width}, height: ${usedViewport.height} } });`,
@@ -71,6 +75,7 @@ function specFor(
       `test('reproduces ${finding.id}: ${finding.title.replace(/['\\]/g, ' ').slice(0, 100)}', async ({ page }) => {`,
       `  test.setTimeout(${TEST_TIMEOUT_MS});`,
       `  await page.goto(${json(plan.url)}, { waitUntil: 'load' });`,
+      clicks,
       `  await page.waitForTimeout(300);`,
       `  const m = await page.evaluate(() => ({`,
       `    clientWidth: document.documentElement.clientWidth,`,
