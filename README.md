@@ -134,12 +134,13 @@ fault through the real Playwright runner.
 
 ## Status
 
-v0.3.1 — reliability & trust refinement of the v0.3.0 line. Cross-page fault clusters,
-adaptive async observation (configurable, budgeted), open shadow DOM + same-origin iframe
-detection and `scan --compare-with` are all retained; this patch hardens how clusters are
-described (message-only matches are shown as *possible duplicates*, never a proven shared
-root cause), keeps lone faults out of the cluster view, and tightens report accuracy. See the
-[changelog](CHANGELOG.md), [test baselines](docs/test-baselines.md) and the
+v0.3.2 — post-release hardening: the offline HTML report now validates link schemes so
+untrusted `result.json` values can never become clickable `javascript:`/`data:` links, and
+trace evidence is labelled honestly as local-only. Built on v0.3.1 (honest fault-cluster
+labelling, ≥2-page clusters, accurate `issues.md`) and the v0.3.0 line — cross-page fault
+clusters, adaptive async observation (configurable, budgeted), open shadow DOM + same-origin
+iframe detection and `scan --compare-with`. See the [changelog](CHANGELOG.md),
+[test baselines](docs/test-baselines.md) and the
 [compatibility matrix](docs/compatibility.md).
 Known limitations are listed in the changelog and in the "Not checked" section of every report.
 

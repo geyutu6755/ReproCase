@@ -125,7 +125,7 @@ npm run test:all   # 单元 + 集成（真实浏览器）+ CLI 端到端
 
 ## 状态
 
-v0.3.1 —— 在 v0.3.0 基础上的可靠性与可信度精修：保留跨页面故障聚类、自适应异步观测（可配置/有预算）、开放 Shadow DOM 与同源 iframe 检测、scan --compare-with 跨扫描比较；本补丁收紧故障聚类的表述（仅凭相同文本、无可信堆栈的匹配只显示为"疑似关联/可能重复"，绝不声称已证实同一根因），让孤立故障不再冒充聚类，并提升报告准确性。详见
+v0.3.2 —— 发布后加固：离线 HTML 报告对链接协议做校验，来自不可信 `result.json` 的值不会再变成可点击的 `javascript:`/`data:` 链接；并对 Trace 证据作诚实标注（仅本地、公共副本不包含）。基于 v0.3.1（故障聚类诚实表述、聚类需跨≥2页、`issues.md` 表头准确）与 v0.3.0 特性线——跨页面故障聚类、自适应异步观测（可配置/有预算）、开放 Shadow DOM 与同源 iframe 检测、scan --compare-with。详见
 [变更日志](CHANGELOG.md)、[测试基线](docs/test-baselines.md) 与[兼容性矩阵](docs/compatibility.md)。
 
 ## 许可证

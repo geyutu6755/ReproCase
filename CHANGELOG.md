@@ -4,6 +4,38 @@ All notable changes to ReproCase are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.3.2] — 2026-11-01
+
+Post-release hardening: one security fix and one report-honesty fix. No new
+features and no UI rebuild.
+
+### Security
+
+- **The HTML report no longer turns untrusted URLs into clickable links.**
+  `report.html` assigned `result.json` values (finding page URL, cluster member
+  URL, reproduction-plan URL, page-table URL, header target) directly to anchor
+  `href`. The bundled scanner only emits `http(s)`, but the generator is a general
+  renderer over an arbitrary `ScanResult`, so a crafted / shared / older /
+  third-party `result.json` — opened as an offline report — could produce a
+  `javascript:` or `data:` link that executes on click (self-XSS). Every dynamic
+  link now passes an HTTP(S) scheme check and renders as non-clickable text if the
+  URL is not `http(s)`; the header target is guarded server-side. Legitimate
+  `http(s)` links are unchanged. A real-browser test asserts zero
+  `javascript:`/`data:`/`file:` anchors while normal links still render.
+
+### Changed
+
+- **Trace links set honest expectations.** Playwright traces stay private and are
+  still stripped from CI and GitHub Pages, but the report now labels the trace link
+  as a *local* artifact and its tooltip states that traces are not included in
+  hosted / public copies — so users no longer see a dead "download" for evidence
+  that was intentionally removed.
+
+### Tests
+
+- Suite: **136 tests across 20 files** (was 132) — added a real-browser URL-safety
+  audit, a header-URL guard test, and a trace-copy honesty test.
+
 ## [0.3.1] — 2026-11-01
 
 Reliability and trust refinement. No new capabilities — this release corrects how the
