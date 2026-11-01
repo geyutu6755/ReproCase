@@ -2,16 +2,16 @@
 
 Honest status per platform. "Real pass" means the full automated suite (or the listed
 components) actually ran on that platform; nothing here is inferred from source review.
-Windows and macOS results come from real GitHub Actions runners (`ci.yml` matrix, run for
-commit `2ef101c`, 2026-11-01); Linux from ubuntu runners (Node 20 & 22). The **Windows local**
-column is re-run for every release and now reports the current suite: 122/122 at v0.3.0 and
-132/132 at v0.3.1. The CI columns above the v0.3.x line reflect the `2ef101c` matrix run; a
-fresh `ci.yml` matrix executes on every push to `main` (including the v0.3.1 release push) and
-its results are recorded on that run, not asserted here until observed.
+The **Windows local** column is re-run for every release and reports the current suite:
+122/122 at v0.3.0, 132/132 at v0.3.1 and 136/136 at v0.3.2. The full `ci.yml` matrix
+(Windows / macOS / Ubuntu Node 20 & 22) runs on every push to `main` and every PR; the
+v0.3.1 matrix (run #41295959003) completed **success** on all four OS jobs, and the v0.3.2
+results are attached to that release's PR/push once observed. The matrix cells below are
+annotated with the run each platform result is drawn from.
 
 | Component | Windows 11 x64 (local dev) | Windows CI (windows-latest, Node 22) | Linux CI (ubuntu-latest, Node 20 & 22) | macOS CI (macos-latest, Node 22) |
 | --- | --- | --- | --- | --- |
-| Full test suite (`vitest run`) | ✅ real pass (99/99 v0.2.1; 101/101 v0.2.2; 122/122 v0.3.0; 132/132 v0.3.1) | ✅ real pass (CI @ v0.2.2) | ✅ real pass (CI @ v0.2.2) | ✅ real pass (CI @ v0.2.2) |
+| Full test suite (`vitest run`) | ✅ real pass (101/101 v0.2.2; 122/122 v0.3.0; 132/132 v0.3.1; 136/136 v0.3.2) | ✅ real pass (CI @ v0.2.2) | ✅ real pass (CI @ v0.2.2) | ✅ real pass (CI @ v0.2.2) |
 | CLI `scan` / `demo` / `init` / `doctor` / `compare` | ✅ real pass | ✅ real pass (CI e2e) | ✅ real pass (CI e2e) | ✅ real pass (CI e2e) |
 | Chromium via Playwright (headless) | ✅ real pass | ✅ real pass (CI) | ✅ real pass (`--with-deps`) | ✅ real pass (CI) |
 | Generated reproduction tests via `playwright test` | ✅ real pass | ✅ real pass (CI e2e) | ✅ real pass (CI e2e) | ✅ real pass (CI e2e) |
