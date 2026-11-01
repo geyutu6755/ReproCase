@@ -4,6 +4,40 @@ All notable changes to ReproCase are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.3.1] — 2026-11-01
+
+Reliability and trust refinement. No new capabilities — this release corrects how the
+v0.3.0 cross-page fault clusters are described and presented, so a report never claims a
+proven shared root cause it has not actually established.
+
+### Fixed
+
+- **Fault clusters no longer over-claim.** Cross-page clusters that group by identical
+  message with no distinguishing stack (signature quality `message-only`) are now
+  rendered under a separate **"Possible duplicates"** heading, labelled
+  `confidence: low · message only`, with an explicit note that the shared root cause is
+  **NOT proven**. Clusters backed by a reliable normalized stack + message stay under the
+  confirmed **"Cross-page clusters"** heading. A stack-bearing fault and a stack-less fault
+  that print the same message are kept in separate keys and are never merged.
+- **Lone faults are not "clusters".** `aggregateFindings` now only produces a cluster when a
+  signature spans **two or more pages**. A single-page match previously surfaced as a
+  one-member "cluster" (and, with the honesty labels, a misleading "possible duplicate" of
+  one). Such faults remain complete in `findings`, which still drives `compare` and the
+  per-finding report — no information is lost.
+- **`issues.md` header accuracy.** The combined issue document no longer printed the first
+  finding's verification-attempt count as a global "N independent browser runs" figure
+  (attempts vary per finding). The header now states the verified/suspected meaning
+  generically; every finding still lists its own reproduction ratio.
+
+### Tests
+
+- Real-browser (Chromium) regressions for the honest two-tier cluster labeling, the
+  exploration authorization precedence (`deny > hard-dangerous > soft > click`, proving
+  `exploration.allowSelectors` can never revive a hard-dangerous control), Markdown
+  traceability of clustered findings, and CJK/emoji/markup escaping in the offline report.
+- Strengthened aggregate guards (wrong-merge / miss-merge / lone-fault / deterministic ids).
+  Suite: **132 tests across 20 files** (was 122 across 19).
+
 ## [0.3.0] — 2026-11-01
 
 Real-site coverage and intelligent fault aggregation. Two P0 capabilities — cross-page fault
