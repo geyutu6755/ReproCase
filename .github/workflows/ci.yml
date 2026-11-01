@@ -12,6 +12,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        # `node` is the runtime used to build & TEST ReproCase itself (Node 20 & 22 kept).
+        # The actions/* versions below are the Node-24-runtime majors; Node 20 was removed
+        # from GitHub-hosted runners on 2026-09-16 (see github.blog Node 20 deprecation).
         include:
           - os: ubuntu-latest
             node: 20
@@ -22,9 +25,9 @@ jobs:
           - os: windows-latest
             node: 22
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: ${{ matrix.node }}
           cache: npm
@@ -55,7 +58,7 @@ jobs:
 
       - name: Upload demo report artifact
         if: matrix.os == 'ubuntu-latest' && matrix.node == 22
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: demo-report
           path: demo-report/

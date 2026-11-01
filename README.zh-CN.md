@@ -125,7 +125,7 @@ npm run test:all   # 单元 + 集成（真实浏览器）+ CLI 端到端
 
 ## 状态
 
-v0.3.2 —— 发布后加固：离线 HTML 报告对链接协议做校验，来自不可信 `result.json` 的值不会再变成可点击的 `javascript:`/`data:` 链接；并对 Trace 证据作诚实标注（仅本地、公共副本不包含）。基于 v0.3.1（故障聚类诚实表述、聚类需跨≥2页、`issues.md` 表头准确）与 v0.3.0 特性线——跨页面故障聚类、自适应异步观测（可配置/有预算）、开放 Shadow DOM 与同源 iframe 检测、scan --compare-with。详见
+v0.3.3 —— 报告附件安全后续修复与 CI 运行时维护：Trace/截图附件路径改为"仅本地相对路径"校验（不可信 `result.json` 无法再把它们变成 `javascript:`/`data:` 链接或路径穿越来源），正常本地附件仍可打开；CI Action 升级到 Node-24 运行时主版本（GitHub 运行器已移除 Node 20）。基于 v0.3.2（报告链接协议校验、Trace 诚实标注）、v0.3.1（故障聚类诚实表述、聚类需跨≥2页、`issues.md` 表头准确）与 v0.3.0 特性线——跨页面故障聚类、自适应异步观测（可配置/有预算）、开放 Shadow DOM 与同源 iframe 检测、scan --compare-with。详见
 [变更日志](CHANGELOG.md)、[测试基线](docs/test-baselines.md) 与[兼容性矩阵](docs/compatibility.md)。
 
 ## 许可证

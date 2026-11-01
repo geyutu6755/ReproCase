@@ -171,6 +171,21 @@ const CLIENT_JS = `
     s.title = 'Non-HTTP(S) link is not clickable in this report.';
     return s;
   }
+  // Attachment references (screenshots, traces) are LOCAL relative paths inside the
+  // report bundle. Anything carrying a scheme (javascript:, data:, vbscript:, file:,
+  // http:, ...), a protocol-relative //host, an absolute path, or a ".." traversal
+  // segment is rejected: it must never become a live href/src on a shared report.
+  function safeArtifact(raw) {
+    if (typeof raw !== 'string' || !raw) return null;
+    var v = raw.trim();
+    var BS = String.fromCharCode(92); // backslash, without embedding one in this template
+    if (/^[a-z][a-z0-9+.:-]*:/i.test(v)) return null; // any scheme: javascript:, data:, vbscript:, file:, http:, ...
+    if (v.indexOf('//') === 0) return null;           // protocol-relative //host
+    if (v.charAt(0) === '/' || v.charAt(0) === BS) return null; // absolute path
+    if (v.indexOf(BS) !== -1) return null;            // backslash separators / traversal
+    if (v.indexOf('..') !== -1) return null;          // traversal segments
+    return encodeURI(v);
+  }
 
   var findings = (D.findings || []).slice().sort(function (a, b) {
     if (a.status !== b.status) return a.status === 'verified' ? -1 : 1;
@@ -455,8 +470,13 @@ const CLIENT_JS = `
         card.appendChild(el('div', 'sect-label', 'Screenshots'));
         var shots = el('div', 'shots');
         f.screenshots.forEach(function (p) {
+          var s = safeArtifact(p);
+          if (!s) {
+            shots.appendChild(el('span', 'blocked-url', 'screenshot (untrusted path — not shown)'));
+            return;
+          }
           var img = el('img');
-          img.src = encodeURI(p);
+          img.src = s;
           img.alt = 'Screenshot for ' + f.id;
           img.loading = 'lazy';
           img.tabIndex = 0;
@@ -474,11 +494,16 @@ const CLIENT_JS = `
       var arts = [];
       (f.traces || []).forEach(function (t) {
         var row = el('span');
-        var link = el('a', null, 'browser trace (local · playwright show-trace)');
-        link.href = encodeURI(t);
-        link.download = t.split('/').pop();
-        link.title = 'Private local evidence. Trace files record raw network traffic and are not included in hosted or public copies of this report — open them from your own scan output.';
-        row.appendChild(link);
+        var h = safeArtifact(t);
+        if (h) {
+          var link = el('a', null, 'browser trace (local · playwright show-trace)');
+          link.href = h;
+          link.download = t.split('/').pop();
+          link.title = 'Private local evidence. Trace files record raw network traffic and are not included in hosted or public copies of this report — open them from your own scan output.';
+          row.appendChild(link);
+        } else {
+          row.appendChild(el('span', 'blocked-url', 'browser trace (untrusted path — not linked)'));
+        }
         row.appendChild(el('span', null, ' — ' + t));
         arts.push(row);
       });

@@ -313,6 +313,69 @@ describe('HTML report UX (real browser audit)', () => {
     await page.close();
   }, 120_000);
 
+  it('attachment links (traces/screenshots) are scheme- and traversal-checked (v0.3.3 security)', async () => {
+    // f.traces and f.screenshots come straight from result.json; the v0.3.2 pass
+    // hardened page/plan/member/header links but NOT these attachment attributes.
+    // A crafted report must not produce clickable javascript:/data: trace links or
+    // traversal/out-of-bundle image sources — while normal local artifacts stay usable.
+    const evil = makeFinding({
+      traces: [
+        'javascript:alert(1)',
+        'data:text/html,<h1>evil</h1>',
+        'artifacts/traces/../../escape.zip',
+        'artifacts/traces/legit.zip'
+      ],
+      screenshots: [
+        'javascript:alert(2)',
+        'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg"/>',
+        'artifacts/screenshots/../bad.png',
+        'artifacts/screenshots/legit.png'
+      ]
+    });
+    const result = { ...makeResult([evil]) } as ScanResult;
+    const file = path.join(path.dirname(htmlFile), 'attachment-safety.html');
+    fs.writeFileSync(file, renderHtml(result), 'utf8');
+
+    const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+    const pageErrors: string[] = [];
+    page.on('pageerror', (e) => pageErrors.push(e.message));
+    let dialogMsg = '';
+    page.on('dialog', (d) => { dialogMsg = d.message(); d.dismiss().catch(() => undefined); });
+    await page.goto('file:///' + file.replace(/\\/g, '/'));
+    await page.waitForTimeout(300);
+
+    const state = await page.evaluate(() => {
+      const anchors = [...document.querySelectorAll('a[href]')].map((a) => (a.getAttribute('href') || '').toLowerCase());
+      const imgs = [...document.querySelectorAll('img')].map((i) => (i.getAttribute('src') || '').toLowerCase());
+      const scheme = (s: string) => s.startsWith('javascript:') || s.startsWith('data:') || s.startsWith('vbscript:');
+      const escaped = (s: string) => s.includes('../') || s.includes('..\\');
+      return {
+        badAnchors: anchors.filter(scheme),
+        escapedAnchors: anchors.filter(escaped),
+        legitTrace: anchors.some((h) => h.includes('artifacts/traces/legit.zip')),
+        badImgs: imgs.filter(scheme),
+        escapedImgs: imgs.filter(escaped),
+        legitShot: imgs.some((s) => s.includes('artifacts/screenshots/legit.png'))
+      };
+    });
+
+    // Hostile attachment values must not become live links/images.
+    expect(state.badAnchors, 'no javascript:/data: trace anchors').toEqual([]);
+    expect(state.escapedAnchors, 'no path-traversal trace anchors').toEqual([]);
+    expect(state.badImgs, 'no javascript:/data: screenshot sources').toEqual([]);
+    expect(state.escapedImgs, 'no path-traversal screenshot sources').toEqual([]);
+    // Normal local artifacts must remain usable (not blanket-disabled).
+    expect(state.legitTrace, 'legitimate relative trace link still rendered').toBe(true);
+    expect(state.legitShot, 'legitimate relative screenshot still rendered').toBe(true);
+
+    // Clicking the safe trace anchor must not navigate or execute anything hostile.
+    await page.click('.artifacts a[href*="legit.zip"]').catch(() => undefined);
+    await page.waitForTimeout(150);
+    expect(dialogMsg, 'no dialog from attachment links').toBe('');
+    expect(pageErrors).toEqual([]);
+    await page.close();
+  }, 120_000);
+
   it('stability filter narrows findings (v0.3.0)', async () => {
     const mixed = makeResult([
       makeFinding({ title: 'stable one', evidence: { message: 'a' }, stability: 'stable' }),
