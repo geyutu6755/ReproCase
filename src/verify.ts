@@ -98,8 +98,12 @@ async function attemptRepro(
         .evaluate(() => (window as unknown as { __reprocaseRejections?: { reason: string }[] }).__reprocaseRejections?.splice(0) ?? [])
         .catch(() => [] as { reason: string }[]);
       for (const rej of rejections) messages.push('pageerror:' + rej.reason);
-      const needle = (plan.message ?? '').trim().slice(0, 120);
-      const ok = stepsOk && (needle ? messages.some((m) => m.includes(needle)) : messages.length > 0);
+      // The plan message was whitespace-normalized at capture time while
+      // console/pageerror text arrives raw (with stack newlines) — compare
+      // normalized forms so stack formatting can never break the match.
+      const norm = (s: string): string => s.replace(/\s+/g, ' ').trim();
+      const needle = norm((plan.message ?? '').trim().slice(0, 120));
+      const ok = stepsOk && (needle ? messages.some((m) => norm(m).includes(needle)) : messages.length > 0);
       if (ok) await screenshot(page, outDir, finding.id);
       return ok;
     }

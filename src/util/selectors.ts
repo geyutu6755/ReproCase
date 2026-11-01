@@ -121,13 +121,21 @@ export function collectCandidatesInPage(opts: CandidateOptions): CandidateCollec
         strategy: 'aria-label'
       };
     }
-    let path = node.tagName.toLowerCase();
-    const parent = node.parentElement;
-    if (parent) {
-      const sameTag = Array.from(parent.children).filter((c) => c.tagName === node.tagName);
-      if (sameTag.length > 1) path += ':nth-of-type(' + (sameTag.indexOf(node) + 1) + ')';
+    // Full structural path up to <body> — parent-relative paths are ambiguous
+    // when two panels each contain a first button of the same tag.
+    var parts: string[] = [];
+    var cur: Element | null = node;
+    while (cur && cur !== document.body) {
+      var seg = cur.tagName.toLowerCase();
+      var parent: Element | null = cur.parentElement;
+      if (parent) {
+        var sameTag = Array.from(parent.children).filter(function (c) { return c.tagName === cur!.tagName; });
+        if (sameTag.length > 1) seg += ':nth-of-type(' + (sameTag.indexOf(cur) + 1) + ')';
+      }
+      parts.unshift(seg);
+      cur = parent;
     }
-    return { selector: path, strategy: 'css-path' };
+    return { selector: parts.join(' > '), strategy: 'css-path' };
   }
 
   const HARD_RE =

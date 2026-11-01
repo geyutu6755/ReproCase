@@ -611,7 +611,7 @@ export class Scanner {
     const candidates = collection.candidates.slice(0, cfg.maxActionsPerPage);
     const queue: CandidateInfo[] = [...candidates];
     const seenSelectors = new Set(queue.map((c) => c.selector));
-    let hashRecollects = 0;
+    let recollects = 0;
 
     for (let qi = 0; qi < queue.length; qi++) {
       const cand = queue[qi];
@@ -680,9 +680,7 @@ export class Scanner {
         // Hash-only change (hash-router SPA): the view re-rendered in place.
         // The click path KEEPS accumulating — the same page is still being
         // scanned, so reproduction needs the hash navigation recorded (D5
-        // logic only applies to real document navigations). Re-collect
-        // candidates (bounded) so controls injected by the new view are
-        // explored too.
+        // logic only applies to real document navigations).
         this.logExploration({
           page: pageUrl,
           description: step.description,
@@ -690,29 +688,10 @@ export class Scanner {
           outcome: 'explored',
           note: `same-page hash navigation -> ${redactUrl(page.url(), cfg.report.redactQuery)}`
         });
-        if (hashRecollects < 5) {
-          hashRecollects++;
-          const again = await page
-            .evaluate(collectCandidatesInPage, {
-              max: 200,
-              allowSelectors: cfg.exploration.allowSelectors,
-              denySelectors: cfg.exploration.denySelectors
-            })
-            .catch((): CandidateCollection => ({ candidates: [], skipped: [] }));
-          for (const c of again.candidates) {
-            if (!seenSelectors.has(c.selector)) {
-              seenSelectors.add(c.selector);
-              queue.push(c);
-            }
-          }
-        }
-        continue;
-      }
-
-      if (urlChanged && !docLoaded) {
-        // Same-document SPA transition (pushState/replaceState): keep exploring
-        // the remaining buttons; the final URL is queued as a deep-link check
-        // after the loop (see caller).
+      } else if (urlChanged && !docLoaded) {
+        // Same-document SPA transition (pushState/replaceState): the URL now
+        // points at a deep-linkable route; the caller queues it after the loop
+        // and the click path resets — the deep link has its own path.
         stepsOriginUrl.current = normalizeUrl(page.url());
         stepsBox.steps = [];
         this.logExploration({
@@ -722,31 +701,53 @@ export class Scanner {
           outcome: 'explored',
           note: `same-document navigation (SPA) -> ${redactUrl(normalizeUrl(page.url()), cfg.report.redactQuery)}`
         });
-        continue;
+      } else if (!urlChanged) {
+        this.logExploration({
+          page: pageUrl,
+          description: step.description,
+          selector: cand.selector,
+          outcome: 'explored'
+        });
       }
 
-      this.logExploration({
-        page: pageUrl,
-        description: step.description,
-        selector: cand.selector,
-        outcome: 'explored'
-      });
+      // Re-collect after EVERY non-navigating click: React/Vue/SPA views swap
+      // content in place without changing the URL, so controls that only
+      // exist after an interaction must enter the queue. Bounded per page to
+      // prevent render/collect loops.
+      if (recollects < 5) {
+        recollects++;
+        const again = await page
+          .evaluate(collectCandidatesInPage, {
+            max: 200,
+            allowSelectors: cfg.exploration.allowSelectors,
+            denySelectors: cfg.exploration.denySelectors
+          })
+          .catch((): CandidateCollection => ({ candidates: [], skipped: [] }));
+        for (const c of again.candidates) {
+          if (!seenSelectors.has(c.selector)) {
+            seenSelectors.add(c.selector);
+            queue.push(c);
+          }
+        }
+      }
 
-      await this.pollRejections(page, stepsBox, stepsOriginUrl, obs);
+      if (!urlChanged) {
+        await this.pollRejections(page, stepsBox, stepsOriginUrl, obs);
 
-      const m = await page.evaluate(measureOverflowInPage, OVERFLOW_TOLERANCE_PX).catch(() => undefined);
-      if (m?.overflow) {
-        await obs({
-          type: 'horizontal-overflow',
-          url: page.url(),
-          evidence: {
-            viewport: 'desktop',
-            scrollWidth: m.scrollWidth,
-            clientWidth: m.clientWidth,
-            offenders: m.offenders
-          },
-          steps: [...stepsBox.steps]
-        });
+        const m = await page.evaluate(measureOverflowInPage, OVERFLOW_TOLERANCE_PX).catch(() => undefined);
+        if (m?.overflow) {
+          await obs({
+            type: 'horizontal-overflow',
+            url: page.url(),
+            evidence: {
+              viewport: 'desktop',
+              scrollWidth: m.scrollWidth,
+              clientWidth: m.clientWidth,
+              offenders: m.offenders
+            },
+            steps: [...stepsBox.steps]
+          });
+        }
       }
     }
   }

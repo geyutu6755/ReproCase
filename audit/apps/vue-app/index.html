@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Vue Shop</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: "Segoe UI", system-ui, sans-serif; background: #f5f9f7; color: #17321f; }
+    header { background: #17321f; color: #42d392; padding: 12px 16px; font-weight: 700; }
+    main { max-width: 720px; margin: 0 auto; padding: 16px; }
+    button { font: inherit; padding: 7px 12px; border-radius: 8px; border: 1px solid #bcd6c6; background: #fff; margin: 4px 6px 4px 0; cursor: pointer; }
+    .panel { background: #fff; border: 1px solid #dfe9e2; border-radius: 10px; padding: 12px 16px; margin-top: 12px; }
+    img { max-width: 100%; }
+  </style>
+</head>
+<body>
+  <header>Vue Shop (vue@3.4.38 global build — no build step)</header>
+  <main>
+    <p>Real Vue 3 runtime with a reactive view switch. The Inventory view renders a broken
+    image and a button whose handler throws through Vue's event wrapper.</p>
+    <div id="app"></div>
+  </main>
+  <script src="./vendor/vue.global.prod.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      Vue.createApp({
+        data: function () {
+          return { view: 'catalog' };
+        },
+        methods: {
+          recount: function () {
+            throw new Error('VueBoom: crash inside a Vue click handler (framework app fault)');
+          }
+        },
+        template:
+          '<div>' +
+          '<div class="panel"><button @click="view = \'catalog\'">Catalog</button>' +
+          '<button @click="view = \'inventory\'">Inventory</button></div>' +
+          '<div class="panel" v-if="view === \'catalog\'"><p>Catalog view: 3 products in stock.</p></div>' +
+          '<div class="panel" v-if="view === \'inventory\'">' +
+          '<p>Inventory view.</p>' +
+          '<img src="./missing-vue-stock.png" alt="Stock levels" width="180" height="90">' +
+          '<button id="vue-recount-btn" @click="recount">Recount stock</button>' +
+          '</div></div>'
+      }).mount('#app');
+    });
+  </script>
+</body>
+</html>

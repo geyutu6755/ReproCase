@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>React Notes</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: -apple-system, "Segoe UI", Roboto, sans-serif; background: #f7f7fb; color: #1d2333; }
+    header { background: #20232a; color: #61dafb; padding: 12px 16px; font-weight: 700; }
+    main { max-width: 720px; margin: 0 auto; padding: 16px; }
+    button { font: inherit; padding: 7px 12px; border-radius: 8px; border: 1px solid #c3c9d9; background: #fff; margin: 4px 6px 4px 0; cursor: pointer; }
+    .panel { background: #fff; border: 1px solid #e2e6f0; border-radius: 10px; padding: 12px 16px; margin-top: 12px; }
+    img { max-width: 100%; }
+    .muted { color: #6b7280; font-size: 13.5px; }
+  </style>
+</head>
+<body>
+  <header>React Notes (react@18.3.1 UMD — no build step)</header>
+  <main>
+    <p>Real React runtime rendering with createElement (no JSX/CDN at runtime — the framework
+    is vendored). Tab switching is React state; the Deploy tab mounts a crashing button and a
+    missing first-party asset.</p>
+    <div id="root"></div>
+  </main>
+  <script src="./vendor/react.production.min.js"></script>
+  <script src="./vendor/react-dom.production.min.js"></script>
+  <script>
+    var e = React.createElement;
+    var notes = [
+      { id: 1, text: 'Ship the reprocase demo report' },
+      { id: 2, text: 'Audit flaky navigation tests' }
+    ];
+
+    function OverviewTab() {
+      return e('div', { className: 'panel' },
+        e('p', null, 'Overview tab: ' + notes.length + ' notes loaded through React state.'),
+        e('button', { onClick: function () { alert('Overview is healthy'); } }, 'Show health')
+      );
+    }
+
+    function DeployTab() {
+      return e('div', { className: 'panel' },
+        e('p', null, 'Deploy tab: pressing Build throws an uncaught error inside the React event system.'),
+        e('button', { id: 'react-build-btn', onClick: function () {
+          throw new Error('ReactBoom: crash inside a React onClick handler (framework app fault)');
+        } }, 'Build now'),
+        e('p', { className: 'muted' }, 'The tab also references a missing asset:'),
+        e('img', { src: './missing-react-chart.png', alt: 'Deploy chart', width: 180, height: 90 })
+      );
+    }
+
+    function App() {
+      var tab = React.useState('overview');
+      var view = tab[0] === 'deploy' ? e(DeployTab) : e(OverviewTab);
+      return e('div', null,
+        e('div', { className: 'panel' },
+          e('button', { onClick: function () { tab[1]('overview'); } }, 'Overview'),
+          e('button', { onClick: function () { tab[1]('deploy'); } }, 'Deploy')
+        ),
+        view
+      );
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+      ReactDOM.createRoot(document.getElementById('root')).render(e(App));
+    });
+  </script>
+</body>
+</html>

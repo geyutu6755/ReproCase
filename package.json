@@ -1,6 +1,6 @@
 {
   "name": "reprocase",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Automated website fault detection & reproduction. Scans a site in a real browser, verifies each fault independently, and emits reproducible Playwright regression tests plus human- and CI-friendly reports.",
   "type": "module",
   "license": "MIT",
@@ -9,6 +9,10 @@
     "type": "git",
     "url": "git+https://github.com/geyutu6755/ReproCase.git"
   },
+  "bugs": {
+    "url": "https://github.com/geyutu6755/ReproCase/issues"
+  },
+  "homepage": "https://github.com/geyutu6755/ReproCase#readme",
   "keywords": [
     "testing",
     "playwright",

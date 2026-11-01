@@ -54,4 +54,6 @@ including executing the generated Playwright reproduction tests. Current counts 
 
 Troubleshooting browser install: see
 [Playwright's documentation](https://playwright.dev/docs/browsers). On Linux CI runners use
-`npx playwright install --with-deps chromium` to install system dependencies.
+`npx playwright install --with-deps chromium` to install system dependencies. More first-run
+problems are covered in the README FAQ; npm publishing readiness is described in
+[npm-publishing.md](npm-publishing.md).

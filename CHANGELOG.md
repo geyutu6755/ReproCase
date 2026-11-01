@@ -4,6 +4,46 @@ All notable changes to ReproCase are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.2.2] — 2026-11-01
+
+User-adoption readiness and release-quality release. Focus: trusted distribution, real
+cross-platform verification, framework coverage and honest public-facing documentation.
+
+### Added
+
+- **Real macOS and Windows CI** ([ci.yml](.github/workflows/ci.yml)): the full suite — CLI,
+  real-browser scans, generated reproduction tests, CJK paths, npm pack install — now runs
+  natively on `macos-latest` and `windows-latest` (Node 22) in addition to
+  `ubuntu-latest` (Node 20 & 22). See [docs/compatibility.md](docs/compatibility.md).
+- **Framework application baselines** ([docs/test-baselines.md](docs/test-baselines.md)):
+  real React 18.3.1 and Vue 3.4.38 production runtimes (vendored offline with license headers)
+  exercising in-place view switching. React `onClick` crashes are detected and verified with
+  their full interaction path; Vue handler errors reported via `console.error` are measured
+  stable 3/3 and honestly classified `suspected` (console-error semantics).
+- **npm publishing readiness** ([docs/npm-publishing.md](docs/npm-publishing.md)): package name
+  confirmed available, pack/bin/metadata/audit checklist verified, minimal executable publish
+  steps documented. No npm release is claimed — no publish credentials exist for this project.
+- Package metadata: `bugs` and `homepage` fields for registry and issue-tooling integration.
+
+### Fixed
+
+- **Locator stability (found on real React/Vue apps):** CSS fallback selectors are now
+  document-unique (full structural path), fixing ambiguous `button` matches that silently
+  clicked the wrong control during exploration and verification replay.
+- **In-place view switching (found on real React/Vue apps):** candidate re-collection now runs
+  after every non-navigating click (bounded 5/page) — controls that only exist after a React
+  state change or Vue reactive update are explored. Previously only hash changes triggered
+  re-collection, missing the most common SPA pattern (false negative).
+- **Verification matching:** plan messages (whitespace-normalized at capture) are compared
+  against raw console/pageerror text in normalized form, so stack newlines can no longer break
+  a reproduction match.
+
+### Verification
+
+101 tests (65 unit + 36 integration/e2e) green; npm audit 0; four-OS CI matrix; framework
+baselines 4/4 planted faults detected (3 verified + 1 console-error stable 3/3), 0 false
+positives / 0 false negatives; full-artifact privacy sweep clean.
+
 ## [0.2.1] — 2026-11-01
 
 User-experience polish and reliability release. No large new features — every change came from
@@ -203,6 +243,7 @@ First verified release.
 - No accessibility, performance, or visual-regression coverage beyond horizontal overflow.
 - Single-browser (Chromium) at this stage; Firefox/WebKit untested.
 
+[0.2.2]: https://github.com/geyutu6755/ReproCase/releases/tag/v0.2.2
 [0.2.1]: https://github.com/geyutu6755/ReproCase/releases/tag/v0.2.1
 [0.2.0]: https://github.com/geyutu6755/ReproCase/releases/tag/v0.2.0
 [0.1.1]: https://github.com/geyutu6755/ReproCase/releases/tag/v0.1.1

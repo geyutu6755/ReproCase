@@ -114,7 +114,9 @@ See [docs/architecture.md](docs/architecture.md) for the full model.
 - [CLI usage](docs/cli.md)
 - [Configuration](docs/configuration.md) ([example config](reprocase.config.example.json))
 - [Architecture](docs/architecture.md)
-- [Contributing](CONTRIBUTING.md) · [Changelog](CHANGELOG.md) · [License (MIT)](LICENSE)
+- [Test baselines](docs/test-baselines.md) · [Compatibility matrix](docs/compatibility.md)
+- [npm publishing](docs/npm-publishing.md)
+- [Contributing](CONTRIBUTING.md) · [Security policy](SECURITY.md) · [Changelog](CHANGELOG.md) · [License (MIT)](LICENSE)
 
 ## Development
 
@@ -132,9 +134,10 @@ fault through the real Playwright runner.
 
 ## Status
 
-v0.2.1 — UX polish & reliability release (hash-routing support, event-driven verification,
-CLI error-path overhaul, real-browser report audit fixes, multi-application baselines). See the
-[changelog](CHANGELOG.md) and the [independent audit report](docs/audit-2026-10-31-v0.1.0.md).
+v0.2.2 — user-adoption readiness release (real macOS/Windows CI, React/Vue framework
+baselines, document-unique locators, in-place view-switch exploration, npm publishing
+readiness). See the [changelog](CHANGELOG.md) and the
+[independent audit report](docs/audit-2026-10-31-v0.1.0.md).
 Known limitations are listed in the changelog and in the "Not checked" section of every report.
 
 ## License
