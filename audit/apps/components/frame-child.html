@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body { margin: 0; font-family: system-ui, sans-serif; background: #fbfbff; color: #1b2033; padding: 10px; }
+    button { font: inherit; padding: 6px 12px; }
+  </style>
+</head>
+<body>
+  <p>Same-origin frame child. The button below crashes; the image is missing.</p>
+  <button id="frame-crash-btn">Recalculate frame</button>
+  <img src="./missing-frame.png" alt="frame asset" width="120" height="60">
+  <script>
+    document.getElementById('frame-crash-btn').addEventListener('click', function () {
+      throw new Error('FrameBoom: crash inside a same-origin iframe (component fault)');
+    });
+  </script>
+</body>
+</html>

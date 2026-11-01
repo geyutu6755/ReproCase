@@ -20,7 +20,7 @@ import {
   type CandidateCollection,
   type CandidateInfo
 } from './util/selectors.js';
-import { firstLine, hostnameOf, isLocalhostHost, normalizeUrl, redactSecretsInText, redactUrl, samePort, sha1Short, sleep } from './util/net.js';
+import { firstHttpUrlInText, firstLine, hostnameOf, isLocalhostHost, normalizeUrl, redactSecretsInText, redactUrl, samePort, sha1Short, sleep } from './util/net.js';
 import { domainAllowed } from './config.js';
 import { verifyFindings } from './verify.js';
 import { aggregateFindings } from './aggregate.js';
@@ -28,6 +28,28 @@ import { log } from './util/log.js';
 import { VERSION } from './version.js';
 
 const MAX_LINK_TARGETS = 200;
+
+/**
+ * A single throw surfaces twice in Chromium-land: window.onerror (pageerror)
+ * and — when a framework logs it — console.error. Same normalized message on
+ * the same page = same event; the js-exception (which carries a stack and a
+ * better repro plan) subsumes the console-error copy. Exact message match on
+ * the same page only: different messages or pages are never merged here.
+ */
+function dedupeConsoleDuplicates(findings: Finding[]): Finding[] {
+  const normHead = (s: string | undefined): string =>
+    (s ?? '')
+      .replace(/s+/g, ' ')
+      .trim()
+      .replace(/^error:s*/i, '')
+      .slice(0, 100);
+  const jsKeys = new Set(
+    findings.filter((f) => f.type === 'js-exception').map((f) => normHead(f.evidence.message) + '|' + f.url)
+  );
+  return findings.filter(
+    (f) => !(f.type === 'console-error' && jsKeys.has(normHead(f.evidence.message) + '|' + f.url))
+  );
+}
 const MAX_LINK_CHECKS = 150;
 const MAX_SOURCES_PER_TARGET = 5;
 
@@ -58,6 +80,10 @@ const NOT_CHECKED = [
   {
     area: 'Performance',
     reason: 'No timing budgets are evaluated.'
+  },
+  {
+    area: 'Cross-origin iframes and closed shadow roots',
+    reason: 'Not accessible from the scanning context. Same-origin iframes and OPEN shadow roots are explored and reported; everything else is logged in the exploration log.'
   },
   {
     area: 'Backend / business logic correctness',
@@ -144,7 +170,7 @@ export class Scanner {
     try {
       await this.crawl(browser);
       await this.checkLinks();
-      const findings = this.collector.list();
+      const findings = dedupeConsoleDuplicates(this.collector.list());
       await verifyFindings(browser, findings, this.cfg, this.outDir);
       return { result: this.buildResult(findings), findings };
     } finally {
@@ -324,9 +350,22 @@ export class Scanner {
       dialog.dismiss().catch(() => undefined);
     });
     page.on('pageerror', (err) => {
+      // Attribute the error to the document it came from: a stack URL that
+      // matches a KNOWN FRAME wins (iframe faults otherwise land on the host
+      // page); everything else — inline scripts, vendored bundles,
+      // pushState routes — belongs to the current page URL. Attributing to
+      // the raw script URL would break SPA routes and vendor rethrows.
+      const srcUrl = firstHttpUrlInText(err.stack);
+      let attributed = page.url();
+      if (srcUrl && this.isFirstParty(srcUrl)) {
+        const frameMatch = page
+          .frames()
+          .find((fr) => normalizeUrl(fr.url()) === normalizeUrl(srcUrl));
+        if (frameMatch) attributed = frameMatch.url();
+      }
       void obs({
         type: 'js-exception',
-        url: page.url(),
+        url: attributed,
         evidence: { message: err.message, stack: err.stack },
         steps: [...stepsBox.steps]
       });
@@ -337,6 +376,21 @@ export class Scanner {
       // response; those root causes are already reported by the resource and
       // page-load detectors, so the console copy is skipped as noise.
       if (/^Failed to load resource/i.test(msg.text())) return;
+      // Scope check by MESSAGE SOURCE: console events fire for all frames,
+      // including cross-origin ones whose content must never be reported.
+      const loc = (msg.location() && msg.location().url) || '';
+      const srcUrl = /^https?:/i.test(loc) ? loc : page.url();
+      if (!this.isFirstParty(srcUrl)) {
+        this.logExploration({
+          page: redactUrl(normalizeUrl(srcUrl), cfg.report.redactQuery),
+          description: 'suppressed console error from outside the scan scope: ' + msg.text().slice(0, 80),
+          outcome: 'skipped-off-scope'
+        });
+        return;
+      }
+      // Attribute to the page where the console event happened — the call
+      // site (msg.location) may sit inside a framework bundle, which is not
+      // a page. The location is only used for the scope decision above.
       void obs({
         type: 'console-error',
         url: page.url(),
@@ -499,6 +553,7 @@ export class Scanner {
         documentLoadsRef
       );
       await this.pollRejections(page, stepsBox, stepsOriginUrl, obs);
+      await this.exploreFrames(page, record, stepsBox, stepsOriginUrl, obs, deadline);
 
       // A same-document (SPA) transition may have changed the URL without a
       // document load: open the final URL directly once, as a deep-link check.
@@ -787,6 +842,114 @@ export class Scanner {
         evidence: { message: rej.reason, stack: rej.stack || undefined },
         steps
       });
+    }
+  }
+
+  /**
+   * Same-origin iframe exploration (v0.3.0): buttons, clicks and per-frame
+   * overflow are collected for child frames whose URL is inside the scan
+   * origin. Cross-origin frames are logged and skipped — their content is
+   * outside the scanning context by design. Bounded: 5 frames × 3 actions.
+   */
+  private async exploreFrames(
+    page: Page,
+    record: PageRecord,
+    stepsBox: { steps: Step[] },
+    stepsOriginUrl: { current: string },
+    obs: ObserveFn,
+    deadline: number
+  ): Promise<void> {
+    const cfg = this.cfg;
+    if (!cfg.allowedActions.clickButtons || cfg.maxActionsPerPage === 0) return;
+    const main = page.mainFrame();
+    let framesExplored = 0;
+
+    for (const frame of page.frames()) {
+      if (Date.now() > deadline) break;
+      if (frame === main || framesExplored >= 5) continue;
+      const frameUrl = frame.url();
+      if (!frameUrl || !/^https?:/i.test(frameUrl)) continue;
+      const frameUrlRed = redactUrl(normalizeUrl(frameUrl), cfg.report.redactQuery);
+
+      if (!this.isFirstParty(frameUrl)) {
+        this.logExploration({
+          page: frameUrlRed,
+          description: 'cross-origin iframe detected',
+          outcome: 'skipped-off-scope',
+          note: 'iframe content is outside the scan origin — not accessible, not reported'
+        });
+        continue;
+      }
+      framesExplored++;
+      // Frame clicks are recorded in the shared step path: the fault thrown
+      // inside the frame is attributed to the frame URL (via its stack), and
+      // reproduction replays the same click after opening that URL directly.
+      // Switching origin resets the path — earlier main-page clicks have no
+      // meaning on the frame document (same rule as D5).
+      stepsOriginUrl.current = normalizeUrl(frameUrl);
+      stepsBox.steps = [];
+
+      const collection: CandidateCollection = await frame
+        .evaluate(collectCandidatesInPage, {
+          max: 3,
+          allowSelectors: cfg.exploration.allowSelectors,
+          denySelectors: cfg.exploration.denySelectors
+        })
+        .catch((): CandidateCollection => ({ candidates: [], skipped: [] }));
+
+      for (const cand of collection.candidates.slice(0, 3)) {
+        if (Date.now() > deadline) break;
+        const description = `click button "${cand.text || cand.selector}" (same-origin iframe)`;
+        const step: Step = {
+          action: 'click',
+          description,
+          selector: cand.selector,
+          locatorStrategy: cand.strategy
+        };
+        // Record in the shared step path: the frame fault is attributed to the
+        // frame URL (via its stack) and reproduction replays this click there.
+        stepsBox.steps = [...stepsBox.steps, step];
+        try {
+          await frame.click(cand.selector, { timeout: 3000 });
+        } catch {
+          stepsBox.steps = stepsBox.steps.slice(0, -1);
+          this.logExploration({
+            page: frameUrlRed,
+            description,
+            selector: cand.selector,
+            outcome: 'click-failed'
+          });
+          continue;
+        }
+        this.stats.actionsPerformed++;
+        record.actions++;
+        this.logExploration({
+          page: frameUrlRed,
+          description,
+          selector: cand.selector,
+          outcome: 'explored',
+          note: 'inside same-origin iframe'
+        });
+        await page.waitForTimeout(Math.min(250 + cfg.requestDelayMs, 800)).catch(() => undefined);
+
+        const m = await frame
+          .evaluate(measureOverflowInPage, OVERFLOW_TOLERANCE_PX)
+          .catch(() => undefined);
+        if (m?.overflow) {
+          await obs({
+            type: 'horizontal-overflow',
+            url: frameUrlRed,
+            evidence: {
+              viewport: 'desktop',
+              scrollWidth: m.scrollWidth,
+              clientWidth: m.clientWidth,
+              offenders: m.offenders,
+              selector: 'same-origin iframe content'
+            },
+            steps: []
+          });
+        }
+      }
     }
   }
 

@@ -93,6 +93,19 @@ export function firstLine(s: string): string {
   return (s || '').split('\n')[0].trim();
 }
 
+/**
+ * Extracts the first http(s) URL embedded in free text (typically a stack
+ * trace) — used to attribute page errors to the frame/script they came from.
+ */
+export function firstHttpUrlInText(text: string | undefined): string | undefined {
+  if (!text) return undefined;
+  const m = /https?:\/\/[^\s'")]+/.exec(text);
+  if (!m) return undefined;
+  // Strip a trailing line:column suffix (stack frames carry it; page URLs
+  // never end in two colon-number groups).
+  return m[0].replace(/:\d+:\d+$/, '');
+}
+
 export function trimStack(stack: string | undefined, lines = 8): string | undefined {
   if (!stack) return undefined;
   return stack.split('\n').slice(0, lines).join('\n');

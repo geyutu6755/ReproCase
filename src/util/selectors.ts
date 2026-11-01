@@ -22,7 +22,11 @@ export interface OverflowMeasurement {
   offenders: OffenderInfo[];
 }
 
-/** Measures horizontal overflow of the document and locates offenders. */
+/**
+ * Overflow measurement for the main document INCLUDING open shadow roots:
+ * document-level querySelectorAll cannot see shadow content, so elements are
+ * collected through shadowRoot links (bounded).
+ */
 export function measureOverflowInPage(tolerance: number): OverflowMeasurement {
   function cssPath(node: Element): string {
     if (node.id) return '#' + node.id;
@@ -42,6 +46,18 @@ export function measureOverflowInPage(tolerance: number): OverflowMeasurement {
     return path;
   }
 
+  function deepElements(root: Document | ShadowRoot, out: Element[], depth: number): void {
+    if (depth > 6 || out.length > 2500) return;
+    for (const el of Array.from(root.querySelectorAll('*'))) {
+      out.push(el);
+      const sr = (el as Element & { shadowRoot?: ShadowRoot }).shadowRoot;
+      if (sr) deepElements(sr, out, depth + 1);
+    }
+  }
+
+  const all: Element[] = [];
+  deepElements(document, all, 0);
+
   const doc = document.documentElement;
   const clientWidth = doc.clientWidth;
   const bodyWidth = document.body ? document.body.scrollWidth : 0;
@@ -50,8 +66,7 @@ export function measureOverflowInPage(tolerance: number): OverflowMeasurement {
 
   const offenders: OffenderInfo[] = [];
   if (overflow) {
-    const all = document.querySelectorAll('body *');
-    for (const el of Array.from(all)) {
+    for (const el of all) {
       if (offenders.length >= 8) break;
       const rect = el.getBoundingClientRect();
       if (rect.width > 0 && rect.right > clientWidth + tolerance) {
@@ -121,19 +136,31 @@ export function collectCandidatesInPage(opts: CandidateOptions): CandidateCollec
         strategy: 'aria-label'
       };
     }
-    // Full structural path up to <body> — parent-relative paths are ambiguous
-    // when two panels each contain a first button of the same tag.
+    // Full structural path up to <body>, crossing OPEN shadow-root boundaries
+    // (Playwright's CSS engine pierces open shadow roots, so the composed
+    // host > ... > inner path resolves document-wide). Parent-relative paths
+    // are ambiguous when two panels each contain a first button of the same tag.
     var parts: string[] = [];
     var cur: Element | null = node;
-    while (cur && cur !== document.body) {
+    var guard = 0;
+    while (cur && cur !== document.body && guard < 40) {
+      guard++;
       var seg = cur.tagName.toLowerCase();
-      var parent: Element | null = cur.parentElement;
-      if (parent) {
-        var sameTag = Array.from(parent.children).filter(function (c) { return c.tagName === cur!.tagName; });
-        if (sameTag.length > 1) seg += ':nth-of-type(' + (sameTag.indexOf(cur) + 1) + ')';
+      var root: Node = cur.getRootNode();
+      var inShadow: boolean = root instanceof ShadowRoot;
+      var siblings: Element[];
+      if (cur.parentElement) {
+        siblings = Array.from(cur.parentElement.children).filter(function (c) { return c.tagName === cur!.tagName; });
+      } else if (inShadow) {
+        siblings = Array.from((root as ShadowRoot).children).filter(function (c) { return c.tagName === cur!.tagName; });
+      } else {
+        siblings = [];
       }
+      if (siblings.length > 1) seg += ':nth-of-type(' + (siblings.indexOf(cur) + 1) + ')';
       parts.unshift(seg);
-      cur = parent;
+      cur = inShadow && cur.parentElement === null
+        ? (root as ShadowRoot).host
+        : cur.parentElement;
     }
     return { selector: parts.join(' > '), strategy: 'css-path' };
   }
@@ -156,9 +183,18 @@ export function collectCandidatesInPage(opts: CandidateOptions): CandidateCollec
 
   const candidates: CandidateInfo[] = [];
   const skipped: SkippedCandidate[] = [];
-  const els = Array.from(
-    document.querySelectorAll('button, [role="button"], input[type="button"], input[type="submit"], a[href^="#"]')
-  );
+  // Deep collection: document tree plus OPEN shadow roots (bounded).
+  const els: Element[] = [];
+  (function deepButtons(root: Document | ShadowRoot, depth: number): void {
+    if (depth > 6 || els.length >= 400) return;
+    for (const el of Array.from(root.querySelectorAll('button, [role="button"], input[type="button"], input[type="submit"], a[href^="#"]'))) {
+      els.push(el);
+    }
+    for (const el of Array.from(root.querySelectorAll('*'))) {
+      const sr = (el as Element & { shadowRoot?: ShadowRoot }).shadowRoot;
+      if (sr) deepButtons(sr, depth + 1);
+    }
+  })(document, 0);
   for (const node of els) {
     if (candidates.length >= opts.max) break;
     if (!(node instanceof HTMLElement)) continue;
