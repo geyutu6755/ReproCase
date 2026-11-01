@@ -182,6 +182,81 @@ describe('HTML report UX (real browser audit)', () => {
     await page.close();
   }, 120_000);
 
+  it('clusters render honestly: reliable = confirmed root cause, message-only = possible duplicate (v0.3.1)', async () => {
+    const dir = path.dirname(htmlFile);
+
+    // --- Reliable cluster: identical shared script + function across pages.
+    const reliable = [
+      makeFinding({ url: 'http://127.0.0.1:4640/a.html', evidence: { message: 'Boom: shared', stack: 'Error: Boom: shared\n    at save (http://127.0.0.1:4640/app.js:1:1)' } }),
+      makeFinding({ url: 'http://127.0.0.1:4640/b.html', evidence: { message: 'Boom: shared', stack: 'Error: Boom: shared\n    at save (http://127.0.0.1:4640/app.js:1:1)' } })
+    ];
+    const reliableHtml = renderHtml({ ...makeResult(reliable), clusters: aggregateFindings(reliable) } as ScanResult);
+    const rFile = path.join(dir, 'cluster-reliable.html');
+    fs.writeFileSync(rFile, reliableHtml, 'utf8');
+
+    // --- Message-only cluster: same message, NO stack at all.
+    const tentative = [
+      makeFinding({ url: 'http://127.0.0.1:4640/a.html', evidence: { message: 'Legacy failure: undefined', stack: undefined } }),
+      makeFinding({ url: 'http://127.0.0.1:4640/b.html', evidence: { message: 'Legacy failure: undefined', stack: undefined } })
+    ];
+    const tentativeHtml = renderHtml({ ...makeResult(tentative), clusters: aggregateFindings(tentative) } as ScanResult);
+    const tFile = path.join(dir, 'cluster-tentative.html');
+    fs.writeFileSync(tFile, tentativeHtml, 'utf8');
+
+    const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+    const pageErrors: string[] = [];
+    page.on('pageerror', (e) => pageErrors.push(e.message));
+
+    await page.goto('file:///' + rFile.replace(/\\/g, '/'));
+    await page.waitForTimeout(200);
+    const rel = await page.evaluate(() => {
+      const root = document.getElementById('clusters')!;
+      return {
+        confirmedHeading: [...root.querySelectorAll('h4')].some((h) => /Confirmed cross-page/i.test(h.textContent || '')),
+        possibleHeading: [...root.querySelectorAll('h4')].some((h) => /Possible duplicate/i.test(h.textContent || '')),
+        chip: root.querySelector('.chips')?.textContent || '',
+        bodyText: root.textContent || ''
+      };
+    });
+    // A reliable cluster is presented as a confirmed root-cause grouping,
+    // never as a mere "possible duplicate".
+    expect(rel.confirmedHeading).toBe(true);
+    expect(rel.possibleHeading).toBe(false);
+    expect(rel.chip).toContain('· cluster');
+    expect(rel.bodyText).not.toMatch(/root cause[^.]*NOT proven/i);
+
+    await page.goto('file:///' + tFile.replace(/\\/g, '/'));
+    await page.waitForTimeout(200);
+    const ten = await page.evaluate(() => {
+      const root = document.getElementById('clusters')!;
+      const card = root.querySelector('.finding') as HTMLElement;
+      return {
+        confirmedHeading: [...root.querySelectorAll('h4')].some((h) => /Confirmed cross-page/i.test(h.textContent || '')),
+        possibleHeading: [...root.querySelectorAll('h4')].some((h) => /Possible duplicate/i.test(h.textContent || '')),
+        chip: card.querySelector('.chips')?.textContent || '',
+        cardText: card.textContent || '',
+        introText: root.querySelector('.muted-intro')?.textContent || '',
+        memberRows: (() => {
+          const d = root.querySelector('details') as HTMLDetailsElement;
+          d.open = true;
+          return d.querySelectorAll('.member-row').length;
+        })()
+      };
+    });
+    // A message-only cluster must NOT be shown as a confirmed root cause; it is
+    // explicitly labelled a possible duplicate whose shared root cause is unproven.
+    expect(ten.confirmedHeading).toBe(false);
+    expect(ten.possibleHeading).toBe(true);
+    expect(ten.chip).toContain('possible duplicate');
+    expect(ten.chip).toMatch(/low/i);
+    expect(ten.cardText).toMatch(/not proven/i);
+    expect(ten.introText).toMatch(/NOT proven/i);
+    // Traceability holds: every affected page is still individually inspectable.
+    expect(ten.memberRows).toBe(2);
+    expect(pageErrors).toEqual([]);
+    await page.close();
+  }, 120_000);
+
   it('stability filter narrows findings (v0.3.0)', async () => {
     const mixed = makeResult([
       makeFinding({ title: 'stable one', evidence: { message: 'a' }, stability: 'stable' }),

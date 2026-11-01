@@ -39,7 +39,9 @@ export interface FaultCluster {
   screenshots: string[];
   traces: string[];
   generatedTests: string[];
-  /** 'stack+message' = location-aware key; 'message-only' = no stack available. */
+  /** 'stack+message' = location-aware key; 'message-only' = no stack available.
+   * A 'message-only' cluster groups by identical text alone and must never be
+   * presented as a PROVEN shared root cause — consumers label it low-confidence. */
   signatureQuality: 'stack+message' | 'message-only';
 }
 

@@ -78,6 +78,59 @@ describe('aggregateFindings (cross-page fault clusters)', () => {
     expect(aggregateFindings(findings)).toEqual([]);
   });
 
+  it('does NOT merge a stack-bearing fault with a stack-less fault sharing its message', () => {
+    // R2/R3: a reliable signature and a message-only signature must never be
+    // folded into one cluster — the stack-less finding has no source evidence
+    // to confirm it shares the stack-bearing root cause.
+    const withStack = makeFinding({
+      url: 'http://x/a.html',
+      evidence: { message: 'Boom: quota exceeded', stack: stackAt('app.js', 'save') }
+    });
+    const noStack = makeFinding({
+      url: 'http://x/b.html',
+      evidence: { message: 'Boom: quota exceeded', stack: undefined }
+    });
+    const clusters = aggregateFindings([withStack, noStack]);
+    expect(clusters).toHaveLength(2);
+    const qualities = clusters.map((c) => c.signatureQuality).sort();
+    expect(qualities).toEqual(['message-only', 'stack+message']);
+  });
+
+  it('marks only message-only clusters so consumers can flag them low-confidence', () => {
+    const reliable = aggregateFindings([
+      makeFinding({ url: 'http://x/a.html', evidence: { message: 'Boom: shared', stack: stackAt('app.js', 'save') } }),
+      makeFinding({ url: 'http://x/b.html', evidence: { message: 'Boom: shared', stack: stackAt('app.js', 'save') } })
+    ])[0];
+    const tentative = aggregateFindings([
+      makeFinding({ url: 'http://x/a.html', evidence: { message: 'Legacy failure', stack: undefined } }),
+      makeFinding({ url: 'http://x/b.html', evidence: { message: 'Legacy failure', stack: undefined } })
+    ])[0];
+    // The data layer exposes the difference explicitly; the renderers must not
+    // present a message-only cluster as a proven cross-page root cause.
+    expect(reliable.signatureQuality).toBe('stack+message');
+    expect(tentative.signatureQuality).toBe('message-only');
+    // Both keep every member finding complete (traceability, never collapsed).
+    expect(reliable.members).toHaveLength(2);
+    expect(tentative.members).toHaveLength(2);
+    expect(tentative.pages).toEqual(['http://x/a.html', 'http://x/b.html']);
+  });
+
+  it('keeps per-member verification detail inside a message-only cluster', () => {
+    // Even when grouped only by message, each member's own status/stability/evidence
+    // must survive untouched — the cluster is a view, not a replacement.
+    const members = [
+      makeFinding({ url: 'http://x/a.html', status: 'verified', stability: 'stable', evidence: { message: 'Legacy failure', stack: undefined } }),
+      makeFinding({ url: 'http://x/b.html', status: 'suspected', stability: 'unreproducible', evidence: { message: 'Legacy failure', stack: undefined } })
+    ];
+    const cluster = aggregateFindings(members)[0];
+    // Members are ordered by URL (a.html, then b.html); each keeps its own truth.
+    expect(cluster.members.map((m) => [m.url, m.status, m.stability])).toEqual([
+      ['http://x/a.html', 'verified', 'stable'],
+      ['http://x/b.html', 'suspected', 'unreproducible']
+    ]);
+    expect(cluster.signatureQuality).toBe('message-only');
+  });
+
   it('aggregates severity (highest), stability (worst) and unions artifacts', () => {
     const findings = [
       makeFinding({ url: 'http://x/a.html', severity: 'medium', status: 'suspected', stability: 'unreproducible', evidence: { message: 'Boom: x', stack: stackAt('app.js', 'save') }, screenshots: ['s-a.png'], traces: [] }),
