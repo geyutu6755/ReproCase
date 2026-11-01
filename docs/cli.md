@@ -50,6 +50,7 @@ coverage warning, never a claimed fix.
 | `--depth <n>` | `3` | Maximum crawl depth from the entry page |
 | `--timeout <ms>` | `300000` | Overall run timeout |
 | `--fail-on <mode>` | `verified` | Exit 1 when `verified` or `suspected` findings exist, or `never` |
+| `--compare-with <file>` | — | Diff against a previous `result.json`; writes `compare.json` and embeds a "Changes vs previous scan" section in the HTML report |
 | `--no-screenshots` | — | Disable screenshot capture |
 | `--no-traces` | — | Disable Playwright trace capture |
 | `-v, --verbose` | — | Log every step (to stderr) |

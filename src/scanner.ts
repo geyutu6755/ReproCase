@@ -419,7 +419,7 @@ export class Scanner {
           // never report anything from there (SSRF/越界 hardening).
           this.logExploration({
             page: redactUrl(normalizeUrl(landedUrl), cfg.report.redactQuery),
-            description: 'document redirect left the scan scope',
+            description: 'out-of-scope document request (redirect or iframe)',
             outcome: 'skipped-off-scope'
           });
           return;

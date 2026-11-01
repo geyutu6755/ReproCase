@@ -1,3 +1,4 @@
+import type { CompareResult } from '../compare.js';
 import type { FindingType, ScanResult } from '../types.js';
 import { VERSION } from '../version.js';
 
@@ -60,6 +61,11 @@ main { max-width: 1080px; margin: 0 auto; padding: 20px 24px 60px; }
 .toolbar input, .toolbar select { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; font: inherit; font-size: 13.5px; color: var(--ink); }
 .toolbar input { flex: 1 1 220px; }
 .count { color: var(--muted); font-size: 13px; margin-left: auto; white-space: nowrap; }
+.member-row { padding: 3px 0; font-size: 13px; border-bottom: 1px dashed var(--line); }
+.member-row a { word-break: break-all; }
+.member-row span { color: var(--muted); }
+.compare-group { margin: 14px 0 8px; font-size: 15px; }
+.muted-intro { color: var(--muted); font-size: 13px; margin: 0 0 10px; }
 .copy-btn { font: inherit; font-size: 12px; border: 1px solid var(--line); background: #f8fafc; color: var(--accent); border-radius: 6px; padding: 3px 10px; cursor: pointer; }
 .copy-btn:hover { border-color: var(--accent); }
 .finding { background: var(--card); border: 1px solid var(--line); border-left: 4px solid var(--muted); border-radius: 10px; padding: 16px 18px; margin-bottom: 14px; overflow-wrap: anywhere; }
@@ -118,7 +124,7 @@ const CLIENT_JS = `
   var D = window.__REPROCASE_DATA__ || { findings: [], pages: [], summary: {}, stats: {}, notChecked: [] };
   var SEV_ORDER = { critical: 0, high: 1, medium: 2, low: 3 };
   var SEV_COLOR = { critical: '#b91c1c', high: '#c2410c', medium: '#a16207', low: '#64748b' };
-  var state = { q: '', severity: 'all', status: 'all', type: 'all', sort: 'severity' };
+  var state = { q: '', severity: 'all', status: 'all', type: 'all', sort: 'severity', stability: 'all' };
 
   function el(tag, cls, text) {
     var e = document.createElement(tag);
@@ -191,11 +197,84 @@ const CLIENT_JS = `
     if (state.severity !== 'all' && f.severity !== state.severity) return false;
     if (state.status !== 'all' && f.status !== state.status) return false;
     if (state.type !== 'all' && f.type !== state.type) return false;
+    if (state.stability !== 'all' && (f.stability || 'unknown') !== state.stability) return false;
     if (state.q) {
       var hay = (f.title + ' ' + f.url + ' ' + (f.evidence.message || '') + ' ' + (f.evidence.resourceUrl || '')).toLowerCase();
       if (hay.indexOf(state.q) === -1) return false;
     }
     return true;
+  }
+
+  function renderClusters() {
+    var wrap = document.getElementById('clusters');
+    wrap.textContent = '';
+    var clusters = D.clusters || [];
+    if (!clusters.length) {
+      document.getElementById('clustersSect').style.display = 'none';
+      return;
+    }
+    var intro = el('p', 'muted-intro', 'Same root cause reached from several pages is grouped into one cluster. Expand a cluster to see every affected page with its own reproduction status.');
+    wrap.appendChild(intro);
+    clusters.forEach(function (c) {
+      var card = el('article', 'finding ' + c.severity);
+      var chips = el('div', 'chips');
+      chips.appendChild(chip(c.severity, c.severity));
+      chips.appendChild(chip(c.status, c.status));
+      chips.appendChild(chip('type', c.type + ' · cluster'));
+      if (c.signatureQuality === 'message-only') chips.appendChild(chip('type', 'signature: message only'));
+      card.appendChild(chips);
+      card.appendChild(el('h3', null, c.title + '  (' + c.pages.length + ' page' + (c.pages.length > 1 ? 's' : '') + ')'));
+      var meta = el('div', 'meta');
+      meta.appendChild(el('span', null, 'members: ' + c.members.length + ' · reproduced: ' + c.repro.successes + '/' + c.repro.attempts + ' member-attempts'));
+      card.appendChild(meta);
+      var details = el('details', null, '');
+      details.appendChild(el('summary', null, 'Affected pages'));
+      c.members.forEach(function (m) {
+        var row = el('div', 'member-row');
+        var a = el('a', null, m.url);
+        a.href = m.url; a.target = '_blank'; a.rel = 'noreferrer';
+        row.appendChild(a);
+        row.appendChild(el('span', null, '  [' + m.status + (m.stability ? '/' + m.stability : '') + '] repro ' + m.repro.successes + '/' + m.repro.attempts + (m.generatedTest ? ' · ' + m.generatedTest : '')));
+        details.appendChild(row);
+      });
+      card.appendChild(details);
+      wrap.appendChild(card);
+    });
+  }
+
+  function renderCompare() {
+    var box = document.getElementById('compareSect');
+    var C = D.compare;
+    if (!C) { box.style.display = 'none'; return; }
+    box.textContent = '';
+    box.appendChild(el('h2', 'section', 'Changes vs previous scan'));
+    if (C.coverage && C.coverage.coverageShrunk) {
+      var warn = el('div', 'warnbox', 'Coverage shrank: ' + C.coverage.removedPages.length + ' page(s) from the baseline were not revisited. Resolved entries on those pages are unconfirmed — rerun with the same scope before claiming fixes.');
+      box.appendChild(warn);
+    }
+    var s = C.summary || {};
+    var groups = [
+      { key: 'new', label: 'New (' + (s.newCount || 0) + ')', items: (C.new || []).map(function (e) { return { f: e.finding, chips: ['new'] }; }), empty: 'No new findings.' },
+      { key: 'resolved', label: 'Resolved (' + (s.resolvedCount || 0) + ')', items: (C.resolved || []).map(function (e) { return { f: e.finding, chips: [e.confirmed ? 'resolved' : 'unconfirmed'], note: e.reason }; }), empty: 'Nothing resolved.' },
+      { key: 'persistent', label: 'Persistent (' + (s.persistentCount || 0) + ')', items: (C.persistent || []).map(function (e) { return { f: e.current, chips: e.changes && e.changes.length ? ['changed'] : [] }; }), empty: 'No persistent findings.' }
+    ];
+    groups.forEach(function (g) {
+      var h = el('h3', 'compare-group', g.label);
+      box.appendChild(h);
+      if (!g.items.length) { box.appendChild(el('div', 'empty', g.empty)); return; }
+      g.items.forEach(function (item) {
+        var card = el('div', 'finding ' + item.f.severity);
+        var chips = el('div', 'chips');
+        chips.appendChild(chip(item.f.severity, item.f.severity));
+        chips.appendChild(chip('status', item.f.status));
+        (item.chips || []).forEach(function (cl) { chips.appendChild(chip('type', cl)); });
+        card.appendChild(chips);
+        card.appendChild(el('h3', null, item.f.title));
+        card.appendChild(el('div', 'meta', item.f.url + ' · repro ' + item.f.repro.successes + '/' + item.f.repro.attempts));
+        if (item.note) card.appendChild(el('div', 'meta', item.note));
+        box.appendChild(card);
+      });
+    });
   }
 
   function renderSummary() {
@@ -468,7 +547,7 @@ const CLIENT_JS = `
   function wireToolbar() {
     var q = document.getElementById('q');
     q.addEventListener('input', function () { state.q = q.value.trim().toLowerCase(); renderFindings(); });
-    [['sev', 'severity'], ['status', 'status'], ['type', 'type'], ['sort', 'sort']].forEach(function (pair) {
+    [['sev', 'severity'], ['status', 'status'], ['type', 'type'], ['stab', 'stability'], ['sort', 'sort']].forEach(function (pair) {
       var sel = document.getElementById(pair[0]);
       sel.addEventListener('change', function () { state[pair[1]] = sel.value; renderFindings(); });
     });
@@ -481,6 +560,8 @@ const CLIENT_JS = `
   renderSevBars();
   wireToolbar();
   renderFindings();
+  renderClusters();
+  renderCompare();
   renderPages();
   renderExploration();
   renderNotChecked();
@@ -489,7 +570,7 @@ const CLIENT_JS = `
 `;
 
 /** Renders the self-contained offline HTML report. No external resources. */
-export function renderHtml(result: ScanResult): string {
+export function renderHtml(result: ScanResult, compare?: CompareResult): string {
   const target = result.target?.entry ?? '';
   const typeOptions = ([
     'page-load-failure',
@@ -545,6 +626,12 @@ export function renderHtml(result: ScanResult): string {
       <option value="all">all types</option>
       ${typeOptions}
     </select>
+    <select id="stab" aria-label="Filter by stability">
+      <option value="all">all stability</option>
+      <option value="stable">stable</option>
+      <option value="intermittent">intermittent</option>
+      <option value="unreproducible">unreproducible</option>
+    </select>
     <select id="sort" aria-label="Sort findings">
       <option value="severity">sort: severity</option>
       <option value="status">sort: status</option>
@@ -554,6 +641,11 @@ export function renderHtml(result: ScanResult): string {
     <span id="count" class="count"></span>
   </div>
   <section id="findings"></section>
+
+  <h2 class="section" id="clustersSect">Fault clusters (cross-page)</h2>
+  <section id="clusters"></section>
+
+  <section id="compareSect"></section>
 
   <h2 class="section">Pages checked</h2>
   <section id="pagesSect">
@@ -574,7 +666,7 @@ export function renderHtml(result: ScanResult): string {
   <footer id="footer"></footer>
 </main>
 <div id="lightbox" role="dialog" aria-modal="true" aria-label="Screenshot preview (Escape closes)" tabindex="-1"><img alt="Screenshot preview"></div>
-<script>window.__REPROCASE_DATA__ = ${jsonForScript(result)};</script>
+<script>window.__REPROCASE_DATA__ = ${jsonForScript(compare ? { ...result, compare } : result)};</script>
 <script>${CLIENT_JS}</script>
 </body>
 </html>

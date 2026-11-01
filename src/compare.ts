@@ -167,7 +167,7 @@ export function compareResults(baseline: ScanResult, current: ScanResult, files?
   };
 }
 
-function loadResultFile(file: string): ScanResult {
+export function loadResultFile(file: string): ScanResult {
   if (!fs.existsSync(file)) {
     throw new Error(`File not found: "${file}". Run "reprocase scan" first — the result lives in <out>/result.json.`);
   }

@@ -10,6 +10,7 @@ import { generateTests } from './generate-tests.js';
 import { writeReports } from './report/write.js';
 import { startStaticServer } from './dev-server.js';
 import { collectDoctorChecks, printDoctorReport, runInit } from './setup.js';
+import { compareResults, loadResultFile, type CompareResult } from './compare.js';
 import { runCompare } from './compare.js';
 import { log } from './util/log.js';
 import { VERSION } from './version.js';
@@ -115,6 +116,7 @@ interface ScanCliOptions {
   depth?: number;
   timeout?: number;
   failOn: FailOn;
+  compareWith?: string;
   screenshots: boolean;
   traces: boolean;
   verbose?: boolean;
@@ -145,8 +147,26 @@ async function runScan(opts: ScanCliOptions): Promise<void> {
   log.info(`[scan] entry ${config.entry} (allowed: ${(config.allowedDomains.join(', ') || 'localhost')})`);
   const scanner = new Scanner(config, outDir);
   const { result } = await scanner.run();
+
+  let compare: CompareResult | undefined;
+  const compareFile = unquote(opts.compareWith);
+  if (compareFile) {
+    const baseline = loadResultFile(compareFile);
+    compare = compareResults(baseline, result, {
+      baseline: path.resolve(compareFile),
+      current: path.resolve(outDir, 'result.json')
+    });
+    log.info(
+      `[compare] vs ${compareFile}: new ${compare.summary.newCount}, resolved ${compare.summary.resolvedCount}` +
+        (compare.summary.resolvedUnconfirmedCount > 0
+          ? ` (${compare.summary.resolvedUnconfirmedCount} unconfirmed — coverage shrank)`
+          : '') +
+        `, persistent ${compare.summary.persistentCount}`
+    );
+  }
+
   generateTests(result.findings, outDir, config.viewports);
-  writeReports(outDir, result);
+  writeReports(outDir, result, compare);
   printSummary(result, outDir);
 
   const code = exitCodeFor(result, opts.failOn);
@@ -217,6 +237,7 @@ program
   .option('--depth <n>', 'maximum crawl depth from the entry page', intArg)
   .option('--timeout <ms>', 'overall run timeout in milliseconds', intArg)
   .option('--fail-on <mode>', 'exit 1 when "verified" or "suspected" findings exist, or "never"', failOnArg, 'verified')
+  .option('--compare-with <file>', 'diff against a previous result.json and embed the comparison in the report')
   .option('--no-screenshots', 'disable screenshot capture')
   .option('--no-traces', 'disable Playwright trace capture')
   .option('-v, --verbose', 'log every step')

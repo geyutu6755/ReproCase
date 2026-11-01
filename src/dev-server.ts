@@ -41,6 +41,8 @@ export interface StaticServerOptions {
    * page-load-failure detection works.
    */
   spaFallback?: boolean;
+  /** Bind a specific port instead of a random one (for multi-app fixtures). */
+  port?: number;
 }
 
 /**
@@ -100,7 +102,7 @@ export async function startStaticServer(
 
   await new Promise<void>((resolve, reject) => {
     server.once('error', reject);
-    server.listen(0, '127.0.0.1', () => resolve());
+    server.listen(opts.port ?? 0, '127.0.0.1', () => resolve());
   });
   const port = (server.address() as { port: number }).port;
   return {

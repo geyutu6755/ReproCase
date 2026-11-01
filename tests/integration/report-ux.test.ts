@@ -4,6 +4,8 @@ import * as path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { chromium } from 'playwright';
 import { renderHtml } from '../../src/report/html.js';
+import { compareResults } from '../../src/compare.js';
+import { aggregateFindings } from '../../src/aggregate.js';
 import type { ScanResult } from '../../src/types.js';
 import { makeFinding } from '../helpers/fixtures.js';
 
@@ -141,6 +143,90 @@ describe('HTML report UX (real browser audit)', () => {
     await page.waitForTimeout(250);
     const overflow = await page.evaluate(() => Math.max(document.documentElement.scrollWidth, document.body.scrollWidth) - document.documentElement.clientWidth);
     expect(overflow).toBeLessThanOrEqual(2);
+    await page.close();
+  }, 120_000);
+
+  it('clusters render with expandable affected pages (v0.3.0)', async () => {
+    // Two pages hitting the same root cause -> one cluster with 2 members.
+    const members = [
+      makeFinding({ url: 'http://127.0.0.1:4640/a.html', evidence: { message: 'Boom: shared', stack: 'Error: Boom: shared\n    at save (http://127.0.0.1:4640/app.js:1:1)' } }),
+      makeFinding({ url: 'http://127.0.0.1:4640/b.html', evidence: { message: 'Boom: shared', stack: 'Error: Boom: shared\n    at save (http://127.0.0.1:4640/app.js:1:1)' } })
+    ];
+    const clustered = { ...makeResult(members), clusters: aggregateFindings(members) };
+    const file = path.join(path.dirname(htmlFile), 'clustered.html');
+    fs.writeFileSync(file, renderHtml(clustered as ScanResult), 'utf8');
+
+    const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+    const pageErrors: string[] = [];
+    page.on('pageerror', (e) => pageErrors.push(e.message));
+    await page.goto('file:///' + file.replace(/\\/g, '/'));
+    await page.waitForTimeout(300);
+    expect(await page.evaluate(() => document.querySelectorAll('#clusters .finding').length)).toBe(1);
+    const summaryText = await page.evaluate(() => document.querySelector('#clusters h3')!.textContent);
+    expect(summaryText).toContain('2 pages');
+    // Expandable: affected pages hidden until the details element opens.
+    const visibleBefore = await page.evaluate(() => {
+      const d = document.querySelector('#clusters details') as HTMLDetailsElement;
+      return d.open;
+    });
+    await page.click('#clusters details summary');
+    const visibleAfter = await page.evaluate(() => {
+      const d = document.querySelector('#clusters details') as HTMLDetailsElement;
+      const rows = d.querySelectorAll('.member-row').length;
+      return { open: d.open, rows };
+    });
+    expect(visibleBefore).toBe(false);
+    expect(visibleAfter.open).toBe(true);
+    expect(visibleAfter.rows).toBe(2);
+    expect(pageErrors).toEqual([]);
+    await page.close();
+  }, 120_000);
+
+  it('stability filter narrows findings (v0.3.0)', async () => {
+    const mixed = makeResult([
+      makeFinding({ title: 'stable one', evidence: { message: 'a' }, stability: 'stable' }),
+      makeFinding({ title: 'flaky two', evidence: { message: 'b' }, stability: 'unreproducible', status: 'suspected', repro: { attempts: 3, successes: 0, observedCount: 1 } })
+    ]);
+    const file = path.join(path.dirname(htmlFile), 'mixed.html');
+    fs.writeFileSync(file, renderHtml(mixed), 'utf8');
+    const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+    await page.goto('file:///' + file.replace(/\\/g, '/'));
+    expect(await page.evaluate(() => document.querySelectorAll('.finding').length)).toBe(2);
+    await page.selectOption('#stab', 'stable');
+    await page.waitForTimeout(150);
+    expect(await page.evaluate(() => document.querySelectorAll('.finding').length)).toBe(1);
+    await page.close();
+  }, 120_000);
+
+  it('embedded compare section shows new/resolved/persistent with coverage warning (v0.3.0)', async () => {
+    const base = makeResult([
+      makeFinding({ title: 'kept fault', evidence: { message: 'boom-kept' } }),
+      makeFinding({ title: 'gone fault', evidence: { message: 'boom-gone' } })
+    ]);
+    const cur = makeResult([
+      makeFinding({ title: 'kept fault', evidence: { message: 'boom-kept' } }),
+      makeFinding({ title: 'fresh fault', evidence: { message: 'boom-new' } })
+    ]);
+    // Coverage shrank: drop one page from current.
+    cur.pages = cur.pages.slice(0, 1);
+    const diff = compareResults(base, cur);
+    const file = path.join(path.dirname(htmlFile), 'with-compare.html');
+    fs.writeFileSync(file, renderHtml(cur, diff), 'utf8');
+
+    const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+    const pageErrors: string[] = [];
+    page.on('pageerror', (e) => pageErrors.push(e.message));
+    await page.goto('file:///' + file.replace(/\\/g, '/'));
+    await page.waitForTimeout(300);
+    const state = await page.evaluate(() => ({
+      section: (document.getElementById('compareSect') as HTMLElement).style.display,
+      groups: [...document.querySelectorAll('#compareSect .compare-group')].map((h) => h.textContent),
+      warn: document.querySelector('#compareSect .warnbox') ? 'shown' : 'missing'
+    }));
+    expect(state.section).not.toBe('none');
+    expect(state.groups?.length).toBe(3);
+    expect(state.warn).toBe('shown'); // coverage shrank -> unconfirmed warning, never "fixed"
+    expect(pageErrors).toEqual([]);
     await page.close();
   }, 120_000);
 });
