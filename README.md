@@ -132,8 +132,8 @@ fault through the real Playwright runner.
 
 ## Status
 
-v0.1.1 — security-fix release (scan scope pinning, source-level redaction of plans/stacks,
-exploration coverage fixes, evidence-sharing warnings). See the
+v0.2.1 — UX polish & reliability release (hash-routing support, event-driven verification,
+CLI error-path overhaul, real-browser report audit fixes, multi-application baselines). See the
 [changelog](CHANGELOG.md) and the [independent audit report](docs/audit-2026-10-31-v0.1.0.md).
 Known limitations are listed in the changelog and in the "Not checked" section of every report.
 

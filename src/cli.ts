@@ -17,6 +17,21 @@ import type { ScanResult } from './types.js';
 
 type FailOn = 'verified' | 'suspected' | 'never';
 
+/**
+ * Strips one layer of wrapping quotes from an option value. Some Windows
+ * shells and CI wrappers pass quoted arguments through verbatim; without
+ * this, `--config "path"` arrives as `"path"` and fails with a confusing
+ * doubled-quote path in errors.
+ */
+function unquote(v: string | undefined): string | undefined {
+  if (v === undefined) return v;
+  const t = v.trim();
+  if (t.length >= 2 && ((t.startsWith('"') && t.endsWith('"')) || (t.startsWith("'") && t.endsWith("'")))) {
+    return t.slice(1, -1);
+  }
+  return t;
+}
+
 function intArg(value: string): number {
   const n = Number(value);
   if (!Number.isInteger(n) || n <= 0) throw new InvalidArgumentError('expected a positive integer');
@@ -55,6 +70,11 @@ function printSummary(result: ScanResult, outDir: string): void {
   );
   if (result.truncated) log.out(`Note: partial scan — ${result.truncated}.`);
   log.out('');
+  if (result.entryUnreachable) {
+    log.out('The entry URL could not be reached at all — nothing meaningful was scanned.');
+    log.out('Start the site, fix the entry URL, then re-run. Tip: npx reprocase doctor checks reachability.');
+    log.out('');
+  }
   if (result.findings.length === 0) {
     log.out('No findings. No verified or suspected faults were detected.');
   } else {
@@ -106,12 +126,12 @@ async function runScan(opts: ScanCliOptions): Promise<void> {
   else if (opts.verbose) log.setLevel('verbose');
 
   let partial: Record<string, unknown> = {};
-  const cfgPath = opts.config ?? (fs.existsSync('reprocase.config.json') ? 'reprocase.config.json' : undefined);
+  const cfgPath = unquote(opts.config) ?? (fs.existsSync('reprocase.config.json') ? 'reprocase.config.json' : undefined);
   if (cfgPath) {
     partial = loadConfigFile(cfgPath);
     log.info(`[config] using ${cfgPath}`);
   }
-  if (opts.url) partial.entry = opts.url;
+  if (unquote(opts.url)) partial.entry = unquote(opts.url);
   if (opts.maxPages !== undefined) partial.maxPages = opts.maxPages;
   if (opts.depth !== undefined) partial.maxDepth = opts.depth;
   if (opts.timeout !== undefined) partial.runTimeoutMs = opts.timeout;
@@ -121,15 +141,18 @@ async function runScan(opts: ScanCliOptions): Promise<void> {
   if (!opts.traces) config.capture.traces = false;
   for (const w of warnings) log.warn(w);
 
+  const outDir = unquote(opts.out) ?? 'reprocase-report';
   log.info(`[scan] entry ${config.entry} (allowed: ${(config.allowedDomains.join(', ') || 'localhost')})`);
-  const scanner = new Scanner(config, opts.out);
+  const scanner = new Scanner(config, outDir);
   const { result } = await scanner.run();
-  generateTests(result.findings, opts.out, config.viewports);
-  writeReports(opts.out, result);
-  printSummary(result, opts.out);
+  generateTests(result.findings, outDir, config.viewports);
+  writeReports(outDir, result);
+  printSummary(result, outDir);
 
   const code = exitCodeFor(result, opts.failOn);
-  if (code !== 0) {
+  if (code === 2 && result.entryUnreachable) {
+    log.out('Exit code 2 — the entry URL was unreachable (scan could not run properly).');
+  } else if (code !== 0) {
     log.out(`Exit code ${code} — findings at or above --fail-on ${opts.failOn} exist (use --fail-on never to always exit 0).`);
   }
   process.exitCode = code;
@@ -177,6 +200,7 @@ async function runDemo(opts: DemoCliOptions): Promise<void> {
 const program = new Command();
 program
   .name('reprocase')
+  .showHelpAfterError('(run "reprocase --help" for the command list)')
   .description(
     'Automated website fault detection & reproduction: scans a site in a real browser, ' +
       'independently verifies every fault, and emits reproducible Playwright tests plus HTML/JSON/Issue reports.'

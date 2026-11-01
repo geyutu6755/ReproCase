@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Insights (async hydration)</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: Georgia, serif; background: #fbfaf7; color: #2b2b2b; }
+    main { max-width: 700px; margin: 0 auto; padding: 20px; }
+    .card { background: #fff; border: 1px solid #e4e0d8; border-radius: 8px; padding: 12px 16px; margin: 10px 0; }
+    img { max-width: 100%; }
+    .skeleton { height: 60px; background: #eee9df; border-radius: 6px; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Insights</h1>
+    <p>This app hydrates after a slow "network" round trip (700 ms). After hydration it
+    references a missing image and schedules a delayed exception. A scanner must wait for
+    the real page state instead of relying on fixed sleeps.</p>
+    <div class="card skeleton" id="skeleton">loading…</div>
+  </main>
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      setTimeout(function () {
+        var card = document.getElementById('skeleton');
+        card.className = 'card';
+        card.innerHTML = '<p>Quarterly insights are ready.</p>' +
+          '<img src="./missing-insights.png" alt="Insights chart" width="180" height="90">' +
+          '<p>Trend data loaded at ' + new Date().toLocaleTimeString() + '.</p>';
+        setTimeout(function () {
+          throw new Error('HydrationBoom: failure after async hydration (test app fault)');
+        }, 150);
+      }, 700);
+    });
+  </script>
+</body>
+</html>

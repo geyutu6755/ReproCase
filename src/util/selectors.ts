@@ -149,7 +149,7 @@ export function collectCandidatesInPage(opts: CandidateOptions): CandidateCollec
   const candidates: CandidateInfo[] = [];
   const skipped: SkippedCandidate[] = [];
   const els = Array.from(
-    document.querySelectorAll('button, [role="button"], input[type="button"], input[type="submit"]')
+    document.querySelectorAll('button, [role="button"], input[type="button"], input[type="submit"], a[href^="#"]')
   );
   for (const node of els) {
     if (candidates.length >= opts.max) break;
@@ -161,6 +161,7 @@ export function collectCandidatesInPage(opts: CandidateOptions): CandidateCollec
     // Never touch form controls: submitting or mutating forms is out of scope.
     if (node.closest('form')) continue;
 
+    const isHashLink = node.tagName === 'A';
     const text = (node.textContent || '').trim();
     const label =
       node.getAttribute('aria-label') ||
@@ -168,8 +169,18 @@ export function collectCandidatesInPage(opts: CandidateOptions): CandidateCollec
       node.getAttribute('title') ||
       '';
     const name = node.getAttribute('name') || '';
-    const { selector, strategy } = cssPath(node);
-    const description = 'click button "' + (text || label || selector).slice(0, 80) + '"';
+    let selector: string;
+    let strategy: 'id' | 'testid' | 'aria-label' | 'css-path';
+    if (isHashLink) {
+      const href = node.getAttribute('href') || '';
+      selector = 'a[href="' + href.replace(/"/g, '\\"') + '"]';
+      strategy = 'css-path';
+    } else {
+      const built = cssPath(node);
+      selector = built.selector;
+      strategy = built.strategy;
+    }
+    const description = 'click ' + (isHashLink ? 'view link "' : 'button "') + (text || label || selector).slice(0, 80) + '"';
 
     if (matchesAny(node, deny)) {
       skipped.push({ description, selector, reason: 'denied' });
@@ -198,7 +209,10 @@ export function collectCandidatesInPage(opts: CandidateOptions): CandidateCollec
  */
 export const UNHANDLED_REJECTION_SCRIPT = `
 window.__reprocaseRejections = [];
+window.__reprocaseErrorSeen = false;
+window.addEventListener('error', function () { window.__reprocaseErrorSeen = true; });
 window.addEventListener('unhandledrejection', function (e) {
+  window.__reprocaseErrorSeen = true;
   var r = e && e.reason;
   var msg = r && typeof r === 'object' && 'message' in r ? String(r.message) : String(r);
   var stack = r && typeof r === 'object' && r.stack ? String(r.stack) : '';

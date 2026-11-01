@@ -4,6 +4,52 @@ All notable changes to ReproCase are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.2.1] — 2026-11-01
+
+User-experience polish and reliability release. No large new features — every change came from
+actually using the product: fresh-user install runs, real-browser report audits, multi-application
+scan baselines ([docs/test-baselines.md](docs/test-baselines.md)) and error-path exercises.
+
+### Added
+
+- **Hash-routing support:** same-page hash links (`#/views`) are explored as safe interactions;
+  after a hash change the candidate list is re-collected (bounded to 5 re-collections) so
+  controls injected by the new view are exercised. Reproduction steps keep accumulating across
+  hash views.
+- **Event-driven verification wait:** JS-fault verification waits for an in-page error flag
+  (bounded 2 s) instead of a fixed sleep — faults that fire ~1 s after load (slow hydration)
+  now verify reliably.
+- **Bounded post-detection settle** (600 ms) per page so near-boundary async faults are observed
+  before the browser context closes.
+- **Compatibility matrix** ([docs/compatibility.md](docs/compatibility.md)) with honest
+  real-pass / not-executed statuses, and reusable multi-application baselines
+  ([docs/test-baselines.md](docs/test-baselines.md)).
+- **Docs ↔ CLI consistency guard** (automated): every documented command/option must exist,
+  README status must match the package version, CHANGELOG top entry must match, example config
+  must validate with zero warnings, and every local documentation link must resolve.
+
+### Fixed
+
+- **Report UX (found by real-browser audit):** the pages table forced page-level horizontal
+  overflow on phones (now a scrollable region); long unbroken tokens in titles/URLs overflowed
+  the layout (`overflow-wrap: anywhere`); screenshot previews are keyboard-operable
+  (Tab → Enter opens, Escape closes, ARIA dialog semantics).
+- **CLI (found by error-path exercises):** `Chromium not installed` now prints the exact fix
+  command instead of a raw stack; unwritable output directories name the directory and the
+  `--out` remedy; Ctrl+C closes the browser and exits 130 deterministically; quoted option
+  values (`--config "path"`) no longer produce doubled-quote path errors; the exit-code
+  explanation for unreachable entries no longer claims "findings exist".
+- **Docs:** README status sections, stale test counts and a dead documentation link corrected;
+  the example config no longer triggers an unknown-key warning when copied.
+- **Reliability:** hash-view findings no longer lose their click path (the D5 reset was
+  incorrectly applied to same-page transitions); re-collection is bounded per page.
+
+### Verification
+
+99/99 tests (65 unit + 34 integration/e2e), npm audit 0, three-application baselines with
+7/7 planted faults verified stable and 0 false positives / 0 false negatives, full-artifact
+privacy sweep clean (traces remain private evidence and are stripped from CI/Pages uploads).
+
 ## [0.2.0] — 2026-11-01
 
 Productization release: workflow commands, SPA-aware exploration, a three-tier interaction
@@ -52,7 +98,7 @@ policy, scan comparison and a report upgrade. Built on top of the v0.1.1 securit
 
 ### Verification
 
-81 tests (58 unit + 23 integration/e2e) including: SPA transition regression, coverage-aware
+82 tests (58 unit + 24 integration/e2e) including: SPA transition regression, coverage-aware
 compare, init/doctor/pack end-to-end, red/green reproduction tests, full-artifact privacy sweep
 (0 secrets in JSON/HTML/Markdown/specs), npm audit 0.
 
@@ -106,7 +152,7 @@ tag and release remain unchanged as a historical record.
 
 ### Verification
 
-67/67 tests (49 unit + 18 integration/e2e incl. real-browser scans), red/green verification of
+68/68 tests (50 unit + 18 integration/e2e incl. real-browser scans), red/green verification of
 generated tests (GREEN 2/2 → RED 2/2 correctly failed → SWAP 2/2), full-artifact privacy sweep
 (0 secrets in JSON/HTML/Markdown/specs; traces documented as restricted), npm audit 0.
 
@@ -157,6 +203,7 @@ First verified release.
 - No accessibility, performance, or visual-regression coverage beyond horizontal overflow.
 - Single-browser (Chromium) at this stage; Firefox/WebKit untested.
 
+[0.2.1]: https://github.com/geyutu6755/ReproCase/releases/tag/v0.2.1
 [0.2.0]: https://github.com/geyutu6755/ReproCase/releases/tag/v0.2.0
 [0.1.1]: https://github.com/geyutu6755/ReproCase/releases/tag/v0.1.1
 [0.1.0]: https://github.com/geyutu6755/ReproCase/releases/tag/v0.1.0

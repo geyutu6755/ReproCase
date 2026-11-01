@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Portal (hash router)</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: system-ui, sans-serif; background: #f2f4f8; color: #17203a; }
+    header { background: #17203a; color: #fff; padding: 12px 16px; }
+    nav a { color: #b9c6ff; margin-right: 12px; text-decoration: none; font-size: 14px; }
+    main { max-width: 760px; margin: 0 auto; padding: 16px; }
+    .view { background: #fff; border: 1px solid #dde3ef; border-radius: 10px; padding: 14px 18px; margin-top: 14px; }
+    button { font: inherit; padding: 7px 12px; border-radius: 8px; border: 1px solid #b9c2dd; background: #fff; }
+    .wide { width: 560px; height: 90px; background: #dfe6ff; border-radius: 8px; margin-top: 10px; }
+  </style>
+</head>
+<body>
+  <header>
+    <strong>Portal</strong>
+    <nav>
+      <a href="#/overview">Overview</a>
+      <a href="#/settings">Settings</a>
+      <a href="#/logs">Logs</a>
+    </nav>
+  </header>
+  <main>
+    <p>Hash-routing application. The Logs view injects a crashing button and a wide panel
+    only after the user navigates there — faults must be attributed to the interaction path.</p>
+    <div class="view" id="view"><p>Overview view (default).</p></div>
+  </main>
+  <script>
+    var routes = {
+      '#/overview': function (v) { v.innerHTML = '<p>Overview view (default).</p>'; },
+      '#/settings': function (v) { v.innerHTML = '<p>Settings view. Nothing to see here.</p>'; },
+      '#/logs': function (v) {
+        v.innerHTML = '<p>Logs view.</p>' +
+          '<button id="purge-btn" type="button">Rebuild log index</button>' +
+          '<div class="wide">560px diagnostics canvas — breaks phones</div>';
+        document.getElementById('purge-btn').addEventListener('click', function () {
+          throw new Error('HashRouteBoom: crash inside the logs view (test app fault)');
+        });
+      }
+    };
+    function render() {
+      var v = document.getElementById('view');
+      var hash = location.hash || '#/overview';
+      (routes[hash] || routes['#/overview'])(v);
+    }
+    window.addEventListener('hashchange', render);
+    document.addEventListener('DOMContentLoaded', render);
+  </script>
+</body>
+</html>

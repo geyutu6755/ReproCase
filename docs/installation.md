@@ -48,8 +48,9 @@ the four planted faults plus the broken link they imply.
 npm run test:all
 ```
 
-This runs 49 unit tests, 2 real-browser integration tests and 5 CLI end-to-end tests,
-including executing the generated Playwright reproduction tests.
+This runs the full suite — unit tests, real-browser integration tests and CLI end-to-end tests,
+including executing the generated Playwright reproduction tests. Current counts live in
+[CHANGELOG.md](../CHANGELOG.md); the suite grows with every release, so no numbers are hardcoded here.
 
 Troubleshooting browser install: see
 [Playwright's documentation](https://playwright.dev/docs/browsers). On Linux CI runners use

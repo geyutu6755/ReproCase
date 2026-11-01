@@ -62,7 +62,7 @@ main { max-width: 1080px; margin: 0 auto; padding: 20px 24px 60px; }
 .count { color: var(--muted); font-size: 13px; margin-left: auto; white-space: nowrap; }
 .copy-btn { font: inherit; font-size: 12px; border: 1px solid var(--line); background: #f8fafc; color: var(--accent); border-radius: 6px; padding: 3px 10px; cursor: pointer; }
 .copy-btn:hover { border-color: var(--accent); }
-.finding { background: var(--card); border: 1px solid var(--line); border-left: 4px solid var(--muted); border-radius: 10px; padding: 16px 18px; margin-bottom: 14px; }
+.finding { background: var(--card); border: 1px solid var(--line); border-left: 4px solid var(--muted); border-radius: 10px; padding: 16px 18px; margin-bottom: 14px; overflow-wrap: anywhere; }
 .finding.critical { border-left-color: var(--critical); }
 .finding.high { border-left-color: var(--high); }
 .finding.medium { border-left-color: var(--medium); }
@@ -90,6 +90,8 @@ pre.evidence { background: #0f172a; color: #e2e8f0; border-radius: 8px; padding:
 .artifacts { font-size: 13px; color: var(--muted); display: flex; flex-direction: column; gap: 3px; margin-top: 8px; }
 .artifacts .privacy-note { color: #92400e; background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; padding: 4px 8px; }
 table.pages { width: 100%; border-collapse: collapse; background: var(--card); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; font-size: 13px; }
+.table-scroll { background: var(--card); border: 1px solid var(--line); border-radius: 10px; overflow-x: auto; }
+.table-scroll table.pages { border: none; border-radius: 0; min-width: 640px; margin: 0; }
 table.pages th, table.pages td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--line); }
 table.pages th { background: #f8fafc; color: var(--muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .4px; }
 table.pages tr:last-child td { border-bottom: none; }
@@ -325,7 +327,13 @@ const CLIENT_JS = `
           img.src = encodeURI(p);
           img.alt = 'Screenshot for ' + f.id;
           img.loading = 'lazy';
+          img.tabIndex = 0;
+          img.setAttribute('role', 'button');
+          img.setAttribute('aria-label', 'Open screenshot preview (Enter)');
           img.addEventListener('click', function () { openLightbox(img.src); });
+          img.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openLightbox(img.src); }
+          });
           shots.appendChild(img);
         });
         card.appendChild(shots);
@@ -390,6 +398,7 @@ const CLIENT_JS = `
       tbody.appendChild(tr);
     });
     if ((D.pages || []).length === 0) document.getElementById('pagesSect').style.display = 'none';
+    else document.getElementById('pagesSect').style.display = '';
   }
 
   function renderNotChecked() {
@@ -446,7 +455,15 @@ const CLIENT_JS = `
     var img = lb.querySelector('img');
     img.src = src;
     lb.style.display = 'flex';
+    lb.focus();
   }
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') {
+      var lb = document.getElementById('lightbox');
+      if (lb && lb.style.display !== 'none') lb.style.display = 'none';
+    }
+  });
 
   function wireToolbar() {
     var q = document.getElementById('q');
@@ -540,10 +557,12 @@ export function renderHtml(result: ScanResult): string {
 
   <h2 class="section">Pages checked</h2>
   <section id="pagesSect">
-    <table class="pages" id="pagesTbl">
-      <thead><tr><th>URL</th><th>HTTP</th><th>Depth</th><th>Actions</th><th>JS errors</th><th>Res. errors</th><th>Overflow</th><th>Time</th></tr></thead>
-      <tbody></tbody>
-    </table>
+    <div class="table-scroll">
+      <table class="pages" id="pagesTbl">
+        <thead><tr><th>URL</th><th>HTTP</th><th>Depth</th><th>Actions</th><th>JS errors</th><th>Res. errors</th><th>Overflow</th><th>Time</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
   </section>
 
   <h2 class="section">Exploration log</h2>
@@ -554,7 +573,7 @@ export function renderHtml(result: ScanResult): string {
 
   <footer id="footer"></footer>
 </main>
-<div id="lightbox" role="dialog" aria-label="Screenshot preview"><img alt="Screenshot preview"></div>
+<div id="lightbox" role="dialog" aria-modal="true" aria-label="Screenshot preview (Escape closes)" tabindex="-1"><img alt="Screenshot preview"></div>
 <script>window.__REPROCASE_DATA__ = ${jsonForScript(result)};</script>
 <script>${CLIENT_JS}</script>
 </body>

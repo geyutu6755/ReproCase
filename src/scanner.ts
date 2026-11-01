@@ -17,7 +17,8 @@ import {
   measureOverflowInPage,
   OVERFLOW_TOLERANCE_PX,
   UNHANDLED_REJECTION_SCRIPT,
-  type CandidateCollection
+  type CandidateCollection,
+  type CandidateInfo
 } from './util/selectors.js';
 import { firstLine, hostnameOf, isLocalhostHost, normalizeUrl, redactSecretsInText, redactUrl, samePort, sha1Short, sleep } from './util/net.js';
 import { domainAllowed } from './config.js';
@@ -92,11 +93,47 @@ export class Scanner {
   }
 
   async run(): Promise<ScanRunOutput> {
-    fs.mkdirSync(path.join(this.outDir, 'artifacts', 'screenshots'), { recursive: true });
-    fs.mkdirSync(path.join(this.outDir, 'artifacts', 'traces'), { recursive: true });
-    fs.mkdirSync(path.join(this.outDir, 'generated-tests'), { recursive: true });
+    try {
+      fs.mkdirSync(path.join(this.outDir, 'artifacts', 'screenshots'), { recursive: true });
+      fs.mkdirSync(path.join(this.outDir, 'artifacts', 'traces'), { recursive: true });
+      fs.mkdirSync(path.join(this.outDir, 'generated-tests'), { recursive: true });
+    } catch (e) {
+      const code = (e as NodeJS.ErrnoException).code ?? 'error';
+      throw new Error(
+        `Cannot create the output directory "${this.outDir}" (${code}). ` +
+          'Choose a writable location via --out <dir>, or fix the folder permissions.'
+      );
+    }
 
-    const browser = await chromium.launch({ headless: true });
+    let browser: Browser;
+    try {
+      browser = await chromium.launch({ headless: true });
+    } catch (e) {
+      const msg = firstLine((e as Error).message);
+      if (/Executable doesn't exist|playwright install|browserType\.launch/i.test(msg)) {
+        throw new Error(
+          'Chromium is not installed for Playwright — the most common first-run issue.\n' +
+            '  Fix:  npx playwright install chromium\n' +
+            '  Then re-run the scan. (npx reprocase doctor verifies the environment.)\n' +
+            `  Detail: ${msg}`
+        );
+      }
+      throw e;
+    }
+    // Ctrl+C: close the browser gracefully and always terminate (no partial report).
+    const onInterrupt = (): void => {
+      log.info('\n[interrupted] Ctrl+C received — closing the browser (no partial report is written).');
+      process.exitCode = 130;
+      const hardExit = setTimeout(() => process.exit(130), 2000);
+      void browser
+        .close()
+        .catch(() => undefined)
+        .finally(() => {
+          clearTimeout(hardExit);
+          process.exit(130);
+        });
+    };
+    process.once('SIGINT', onInterrupt);
     try {
       await this.crawl(browser);
       await this.checkLinks();
@@ -104,6 +141,7 @@ export class Scanner {
       await verifyFindings(browser, findings, this.cfg, this.outDir);
       return { result: this.buildResult(findings), findings };
     } finally {
+      process.removeListener('SIGINT', onInterrupt);
       await browser.close().catch(() => undefined);
     }
   }
@@ -471,6 +509,14 @@ export class Scanner {
         await measureOverflowAt('mobile', [...stepsBox.steps]);
         await page.setViewportSize({ ...cfg.viewports.desktop });
       }
+
+      // Bounded post-detection settle: async apps frequently schedule faults
+      // (hydration, delayed throws) shortly after load. Without this window
+      // the context closes before they fire (false negative). Listeners are
+      // live either way — this only bounds how long we stay on the page.
+      if (Date.now() <= deadline) {
+        await page.waitForTimeout(600).catch(() => undefined);
+      }
     }
 
     if (withTraces) {
@@ -563,23 +609,31 @@ export class Scanner {
       });
     }
     const candidates = collection.candidates.slice(0, cfg.maxActionsPerPage);
+    const queue: CandidateInfo[] = [...candidates];
+    const seenSelectors = new Set(queue.map((c) => c.selector));
+    let hashRecollects = 0;
 
-    for (const cand of candidates) {
+    for (let qi = 0; qi < queue.length; qi++) {
+      const cand = queue[qi];
       if (Date.now() > deadline) {
         this.logExploration({
           page: pageUrl,
-          description: `remaining buttons not covered (run deadline)`,
+          description: 'remaining buttons not covered (run deadline)',
           outcome: 'not-covered'
         });
         break;
       }
       const step: Step = {
         action: 'click',
-        description: `click button "${cand.text || cand.selector}"`,
+        description:
+          cand.strategy === 'css-path' && cand.selector.startsWith('a[')
+            ? `click view link "${cand.text || cand.selector}"`
+            : `click button "${cand.text || cand.selector}"`,
         selector: cand.selector,
         locatorStrategy: cand.strategy
       };
       const before = normalizeUrl(page.url());
+      const beforeRaw = page.url();
       const docLoadsBefore = documentLoadsRef.count;
       stepsBox.steps = [...stepsBox.steps, step];
       try {
@@ -620,6 +674,39 @@ export class Scanner {
           note: `destination queued: ${redactUrl(normalizeUrl(page.url()), cfg.report.redactQuery)}`
         });
         break;
+      }
+
+      if (!urlChanged && page.url() !== beforeRaw) {
+        // Hash-only change (hash-router SPA): the view re-rendered in place.
+        // The click path KEEPS accumulating — the same page is still being
+        // scanned, so reproduction needs the hash navigation recorded (D5
+        // logic only applies to real document navigations). Re-collect
+        // candidates (bounded) so controls injected by the new view are
+        // explored too.
+        this.logExploration({
+          page: pageUrl,
+          description: step.description,
+          selector: cand.selector,
+          outcome: 'explored',
+          note: `same-page hash navigation -> ${redactUrl(page.url(), cfg.report.redactQuery)}`
+        });
+        if (hashRecollects < 5) {
+          hashRecollects++;
+          const again = await page
+            .evaluate(collectCandidatesInPage, {
+              max: 200,
+              allowSelectors: cfg.exploration.allowSelectors,
+              denySelectors: cfg.exploration.denySelectors
+            })
+            .catch((): CandidateCollection => ({ candidates: [], skipped: [] }));
+          for (const c of again.candidates) {
+            if (!seenSelectors.has(c.selector)) {
+              seenSelectors.add(c.selector);
+              queue.push(c);
+            }
+          }
+        }
+        continue;
       }
 
       if (urlChanged && !docLoaded) {

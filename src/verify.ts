@@ -88,7 +88,12 @@ async function attemptRepro(
       await page.addInitScript(UNHANDLED_REJECTION_SCRIPT);
       await page.goto(plan.url, { waitUntil: 'load', timeout: cfg.navigationTimeoutMs }).catch(() => undefined);
       const stepsOk = await replaySteps(page, plan.steps ?? []);
-      await page.waitForTimeout(800);
+      // Event-driven wait: resolve as soon as the page reports an error, with a
+      // bounded ceiling for slow async hydration (no fixed-sleep guessing).
+      await page
+        .waitForFunction(() => (window as unknown as { __reprocaseErrorSeen?: boolean }).__reprocaseErrorSeen === true, undefined, { timeout: 2000 })
+        .catch(() => undefined);
+      await page.waitForTimeout(200);
       const rejections = await page
         .evaluate(() => (window as unknown as { __reprocaseRejections?: { reason: string }[] }).__reprocaseRejections?.splice(0) ?? [])
         .catch(() => [] as { reason: string }[]);
