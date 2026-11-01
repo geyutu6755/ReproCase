@@ -4,6 +4,45 @@ All notable changes to ReproCase are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.3.3] — 2026-11-01
+
+Report attachment security follow-up plus CI action-runtime maintenance. No new
+features.
+
+### Security
+
+- **Trace / screenshot attachments no longer accept hostile paths.** The v0.3.2
+  link-scheme guard covered page/plan/member/header links but missed the
+  attachment attributes: `report.html` set the trace anchor `href` and the
+  screenshot `<img> src` from `result.json` values using only `encodeURI`, which
+  does not strip schemes. A crafted / shared / older `result.json` opened as an
+  offline report could therefore expose a clickable `javascript:` trace link
+  (self-XSS) or a `data:` / path-traversal (`../`) image source. **Reproduced in
+  Chromium, then fixed:** a single `safeArtifact()` check now admits only
+  local-relative artifact paths — it rejects any scheme, protocol-relative
+  `//host`, absolute path, backslash separator and `..` traversal — and is applied
+  to the trace `href`/`download`, the screenshot `src` and the lightbox.
+  Legitimate artifacts (`artifacts/traces/…zip`, `artifacts/screenshots/…png`)
+  keep their normal working link / preview; attachments are not disabled.
+
+### Maintenance (CI)
+
+- **Actions moved to Node-24 runtime majors.** Node 20 was removed from
+  GitHub-hosted runners on 2026-09-16; the pinned `actions/checkout@v4`,
+  `setup-node@v4`, `upload-artifact@v4`, `configure-pages@v5` and `deploy-pages@v4`
+  are Node-20 actions now force-run on Node 24. Upgraded to the minimal
+  Node-24 majors verified from each action's own `action.yml` (`runs.using:
+  node24`): `checkout@v5`, `setup-node@v5`, `upload-artifact@v6` (v5 is still
+  node20), `configure-pages@v6`, `deploy-pages@v5`. `upload-pages-artifact` is a
+  composite action and is unchanged. The project's Node **20 and 22** build/test
+  matrix is preserved and CI was re-run on all four platforms.
+
+### Tests
+
+- Suite: **137 tests across 20 files** (was 136) — added a real-browser audit
+  proving hostile trace/screenshot paths are neutralized while normal local
+  artifacts still render.
+
 ## [0.3.2] — 2026-11-01
 
 Post-release hardening: one security fix and one report-honesty fix. No new
