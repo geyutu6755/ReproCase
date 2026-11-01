@@ -85,16 +85,31 @@ export function topFrameOf(stack: string | undefined): { script: string; fn: str
 
 /**
  * Conservative cross-page cluster key for exceptions/console errors:
- * type + normalized top frame + message head. Deliberately includes the
- * message so "similar but different root causes" stay separate.
+ * type + normalized top frame + message head. The top frame only carries
+ * cross-page signal when it names a SHARED script — an inline frame whose
+ * script equals the page's own document is per-page by definition and drops
+ * to a message-only key (marked honestly in the cluster).
  */
 export function clusterKeyOf(f: Finding): { key: string; quality: 'stack+message' | 'message-only' } {
   const frame = topFrameOf(f.evidence.stack);
   const head = messageHead(f.evidence.message);
   if (frame) {
-    return { key: [f.type, frame.script, frame.fn, head].join('|'), quality: 'stack+message' };
+    const pageBase = basenameOf(f.url);
+    const scriptIsThePageItself = frame.script === pageBase || frame.script === '(inline)';
+    if (!scriptIsThePageItself) {
+      return { key: [f.type, frame.script, frame.fn, head].join('|'), quality: 'stack+message' };
+    }
   }
-  return { key: [f.type, '(no-stack)', head].join('|'), quality: 'message-only' };
+  return { key: [f.type, '(message)', head].join('|'), quality: 'message-only' };
+}
+
+function basenameOf(u: string): string {
+  try {
+    const segments = new URL(u).pathname.split('/').filter(Boolean);
+    return segments[segments.length - 1] ?? '(root)';
+  } catch {
+    return '(root)';
+  }
 }
 
 const SEVERITY_RANK: Record<Severity, number> = { critical: 0, high: 1, medium: 2, low: 3 };

@@ -91,6 +91,20 @@ describe('aggregateFindings (cross-page fault clusters)', () => {
     expect(clusters[0].traces).toEqual(['t-b.zip']);
   });
 
+  it('inline-script faults with identical messages aggregate across pages (message-only key)', () => {
+    // Each page has its OWN inline copy of the same faulty code: the script
+    // component equals the page document, so the key degrades to message-only
+    // and the identical messages merge into one cluster.
+    const findings = [
+      makeFinding({ url: 'http://x/shared-error-1.html', evidence: { message: 'Boom: same', stack: stackAt('shared-error-1.html', 'tick') } }),
+      makeFinding({ url: 'http://x/shared-error-2.html', evidence: { message: 'Boom: same', stack: stackAt('shared-error-2.html', 'tick') } })
+    ];
+    const clusters = aggregateFindings(findings);
+    expect(clusters).toHaveLength(1);
+    expect(clusters[0].pages).toHaveLength(2);
+    expect(clusters[0].signatureQuality).toBe('message-only');
+  });
+
   it('produces deterministic ids for identical inputs', () => {
     const build = () =>
       aggregateFindings([
