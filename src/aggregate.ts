@@ -14,7 +14,10 @@ import { sha1Short } from './util/net.js';
  * cause. Clustering is conservative by construction — the key combines the
  * error category, the normalized top stack frame (script + function) and the
  * message head, so similar texts from different components are NOT merged.
- * Findings without a stack fall back to a message-only key, marked as such.
+ * Findings without a stack fall back to a message-only key, marked as such and
+ * presented as unproven "possible duplicates", never as a confirmed root cause.
+ * Only keys shared by two or more pages become clusters; a lone fault stays a
+ * plain finding.
  */
 export interface FaultCluster {
   id: string;
@@ -39,7 +42,9 @@ export interface FaultCluster {
   screenshots: string[];
   traces: string[];
   generatedTests: string[];
-  /** 'stack+message' = location-aware key; 'message-only' = no stack available. */
+  /** 'stack+message' = location-aware key; 'message-only' = no stack available.
+   * A 'message-only' cluster groups by identical text alone and must never be
+   * presented as a PROVEN shared root cause — consumers label it low-confidence. */
   signatureQuality: 'stack+message' | 'message-only';
 }
 
@@ -136,6 +141,11 @@ export function aggregateFindings(findings: Finding[]): FaultCluster[] {
 
   const clusters: FaultCluster[] = [];
   for (const [key, members] of byKey) {
+    // A cluster is a CROSS-PAGE grouping by definition. A key seen on a single
+    // page is just a lone fault — it already lives in `findings` (and drives
+    // compare), so emitting a one-member "cluster" would only mislabel it as a
+    // "duplicate". Skip singletons.
+    if (members.length < 2) continue;
     const sorted = [...members].sort((a, b) => a.url.localeCompare(b.url) || a.title.localeCompare(b.title));
     const pages = [...new Set(sorted.map((m) => m.url))];
     const severity = sorted.reduce<Severity>(

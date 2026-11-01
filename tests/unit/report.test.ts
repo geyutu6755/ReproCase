@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { renderHtml } from '../../src/report/html.js';
 import { renderIssuesMarkdown, renderSingleIssue } from '../../src/report/issue.js';
+import { aggregateFindings } from '../../src/aggregate.js';
 import type { ScanResult } from '../../src/types.js';
 import { makeFinding } from '../helpers/fixtures.js';
 
@@ -135,5 +136,50 @@ describe('HTML report', () => {
     // to evidence actually being attached.
     expect(noEvidence).toContain('Review them before sharing this report publicly');
     expect(noEvidence.match(/review them before sharing this report publicly/g)).toHaveLength(1);
+  });
+});
+
+describe('report accuracy & consistency (v0.3.1)', () => {
+  it('issues.md lists every finding even when some are grouped into a cluster', () => {
+    const members = [
+      makeFinding({ url: 'http://127.0.0.1:4610/a.html', evidence: { message: 'Boom: shared', stack: 'Error: Boom: shared\n    at save (http://127.0.0.1:4610/app.js:1:1)' } }),
+      makeFinding({ url: 'http://127.0.0.1:4610/b.html', evidence: { message: 'Boom: shared', stack: 'Error: Boom: shared\n    at save (http://127.0.0.1:4610/app.js:1:1)' } })
+    ];
+    const clusters = aggregateFindings(members);
+    expect(clusters).toHaveLength(1); // the two share a confirmed root cause...
+    const md = renderIssuesMarkdown(makeResult({ findings: members, clusters }));
+    // ...but issues.md keeps each original finding with its own id/evidence.
+    expect(md).toContain(members[0].id);
+    expect(md).toContain(members[1].id);
+    expect(md).toContain('http://127.0.0.1:4610/app.js:1:1');
+  });
+
+  it('does not print a fabricated global verification count in the header', () => {
+    const r = makeResult({
+      findings: [
+        makeFinding({ repro: { attempts: 3, successes: 3, observedCount: 1 } }),
+        makeFinding({ repro: { attempts: 1, successes: 1, observedCount: 1 } })
+      ]
+    });
+    const md = renderIssuesMarkdown(r);
+    expect(md).not.toMatch(/reproduced in \d+ independent browser runs/);
+    expect(md).toContain('Each finding below lists its own reproduction ratio.');
+    // Per-finding ratios still appear in each finding body.
+    expect(md).toMatch(/1\/1 independent verification attempts/);
+  });
+
+  it('escapes CJK, emoji and markup so the offline report cannot be injected or mangled', () => {
+    const tricky = makeFinding({
+      title: '故障 <b>bold</b> 中文 · 🐛',
+      evidence: { message: '错误 <script>alert(1)</script> "引号" ' }
+    });
+    const html = renderHtml(makeResult({ findings: [tricky] }));
+    // `<`/`>` inside the embedded JSON are neutralised; raw markup never appears.
+    expect(html).toContain('\\u003cscript');
+    expect(html).not.toContain('<script>alert(1)');
+    expect(html).not.toContain('<b>bold</b> 中文');
+    // CJK and emoji survive intact (not stripped or double-encoded).
+    expect(html).toContain('故障');
+    expect(html).toContain('🐛');
   });
 });

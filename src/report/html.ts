@@ -66,6 +66,9 @@ main { max-width: 1080px; margin: 0 auto; padding: 20px 24px 60px; }
 .member-row span { color: var(--muted); }
 .compare-group { margin: 14px 0 8px; font-size: 15px; }
 .muted-intro { color: var(--muted); font-size: 13px; margin: 0 0 10px; }
+.cluster-group { font-size: 12px; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: .5px; margin: 20px 0 6px; }
+.cluster-group:first-child { margin-top: 0; }
+.cluster-caution { margin: 10px 0 0; padding: 9px 12px; background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; color: #92400e; font-size: 12.5px; line-height: 1.5; }
 .copy-btn { font: inherit; font-size: 12px; border: 1px solid var(--line); background: #f8fafc; color: var(--accent); border-radius: 6px; padding: 3px 10px; cursor: pointer; }
 .copy-btn:hover { border-color: var(--accent); }
 .finding { background: var(--card); border: 1px solid var(--line); border-left: 4px solid var(--muted); border-radius: 10px; padding: 16px 18px; margin-bottom: 14px; overflow-wrap: anywhere; }
@@ -213,20 +216,30 @@ const CLIENT_JS = `
       document.getElementById('clustersSect').style.display = 'none';
       return;
     }
-    var intro = el('p', 'muted-intro', 'Same root cause reached from several pages is grouped into one cluster. Expand a cluster to see every affected page with its own reproduction status.');
-    wrap.appendChild(intro);
-    clusters.forEach(function (c) {
+    var reliable = clusters.filter(function (c) { return c.signatureQuality !== 'message-only'; });
+    var tentative = clusters.filter(function (c) { return c.signatureQuality === 'message-only'; });
+
+    function clusterCard(c, confirmed) {
       var card = el('article', 'finding ' + c.severity);
       var chips = el('div', 'chips');
       chips.appendChild(chip(c.severity, c.severity));
       chips.appendChild(chip(c.status, c.status));
-      chips.appendChild(chip('type', c.type + ' · cluster'));
-      if (c.signatureQuality === 'message-only') chips.appendChild(chip('type', 'signature: message only'));
+      if (confirmed) {
+        chips.appendChild(chip('type', c.type + ' · cluster'));
+        chips.appendChild(chip('type', 'signature: stack + message'));
+      } else {
+        chips.appendChild(chip('type', c.type + ' · possible duplicate'));
+        chips.appendChild(chip('suspected', 'confidence: low · message only'));
+      }
       card.appendChild(chips);
       card.appendChild(el('h3', null, c.title + '  (' + c.pages.length + ' page' + (c.pages.length > 1 ? 's' : '') + ')'));
       var meta = el('div', 'meta');
       meta.appendChild(el('span', null, 'members: ' + c.members.length + ' · reproduced: ' + c.repro.successes + '/' + c.repro.attempts + ' member-attempts'));
       card.appendChild(meta);
+      if (!confirmed) {
+        card.appendChild(el('div', 'cluster-caution',
+          'Grouped by identical message only — no distinguishing stack, so the shared root cause is NOT proven. These may be unrelated faults that happen to print the same text. Review each page before treating them as one issue.'));
+      }
       var details = el('details', null, '');
       details.appendChild(el('summary', null, 'Affected pages'));
       c.members.forEach(function (m) {
@@ -238,8 +251,19 @@ const CLIENT_JS = `
         details.appendChild(row);
       });
       card.appendChild(details);
-      wrap.appendChild(card);
-    });
+      return card;
+    }
+
+    if (reliable.length) {
+      wrap.appendChild(el('h4', 'cluster-group', 'Confirmed cross-page clusters (' + reliable.length + ')'));
+      wrap.appendChild(el('p', 'muted-intro', 'Same normalized stack + message reached from several pages, grouped as one root cause. Expand a cluster to see every affected page with its own reproduction status.'));
+      reliable.forEach(function (c) { wrap.appendChild(clusterCard(c, true)); });
+    }
+    if (tentative.length) {
+      wrap.appendChild(el('h4', 'cluster-group', 'Possible duplicates — same message, no reliable stack (' + tentative.length + ')'));
+      wrap.appendChild(el('p', 'muted-intro', 'Grouped by identical message only. The shared root cause is NOT proven — surfaced for triage, never asserted as a single confirmed fault.'));
+      tentative.forEach(function (c) { wrap.appendChild(clusterCard(c, false)); });
+    }
   }
 
   function renderCompare() {
