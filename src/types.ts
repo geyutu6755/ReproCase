@@ -2,6 +2,8 @@
  * Core data model shared by the scanner, verifiers, reporters and the CLI.
  */
 
+import type { FaultCluster } from './aggregate.js';
+
 export type FindingType =
   | 'page-load-failure'
   | 'js-exception'
@@ -157,6 +159,8 @@ export interface PageRecord {
   resourceErrors: number;
   overflow: boolean;
   durationMs: number;
+  /** True when async activity (mutations/requests) never went quiet within maxWaitMs. */
+  observationTimedOut?: boolean;
 }
 
 export interface ScanStats {
@@ -165,6 +169,8 @@ export interface ScanStats {
   requestsObserved: number;
   linksChecked: number;
   durationMs: number;
+  /** Pages whose async observation window expired without going quiet. */
+  observationTimeouts: number;
   findingsRaw: number;
   findingsAfterDedupe: number;
 }
@@ -182,6 +188,8 @@ export interface ScanResult {
   config: ReproCaseConfig;
   stats: ScanStats;
   findings: Finding[];
+  /** Root-cause clusters across pages (view over `findings`; raw data stays intact). */
+  clusters: FaultCluster[];
   pages: PageRecord[];
   /** What the explorer did, skipped or left uncovered (bounded list). */
   exploration: ExplorationLogEntry[];
@@ -222,6 +230,16 @@ export interface ReproCaseConfig {
   exploration: {
     allowSelectors: string[];
     denySelectors: string[];
+  };
+  /**
+   * Adaptive async-observation window. After interactions, the scanner waits
+   * until the page is quiet (no DOM mutations, requests or new errors) for
+   * the remainder of windowMs, extending up to maxWaitMs while errors keep
+   * appearing. Bounded on both sides — never unbounded waiting.
+   */
+  detection: {
+    windowMs: number;
+    maxWaitMs: number;
   };
   capture: {
     screenshots: boolean;

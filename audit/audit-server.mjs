@@ -29,6 +29,13 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  if (urlPath === '/poll.json') {
+    // Endpoint for long-polling test apps: a small JSON body, served fresh.
+    res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
+    res.end(JSON.stringify({ seq: Date.now(), ok: true }));
+    return;
+  }
+
   let filePath;
   if (urlPath === '/app' || urlPath.startsWith('/app/')) {
     filePath = path.join(root, 'spa.html');

@@ -23,6 +23,7 @@ import {
 import { firstLine, hostnameOf, isLocalhostHost, normalizeUrl, redactSecretsInText, redactUrl, samePort, sha1Short, sleep } from './util/net.js';
 import { domainAllowed } from './config.js';
 import { verifyFindings } from './verify.js';
+import { aggregateFindings } from './aggregate.js';
 import { log } from './util/log.js';
 import { VERSION } from './version.js';
 
@@ -77,7 +78,13 @@ type ObserveFn = (input: Omit<ObservationInput, 'screenshot'>) => Promise<void>;
 export class Scanner {
   private readonly collector: FindingCollector;
   private readonly pages: PageRecord[] = [];
-  private readonly stats = { pagesVisited: 0, actionsPerformed: 0, requestsObserved: 0, linksChecked: 0 };
+  private readonly stats = {
+    pagesVisited: 0,
+    actionsPerformed: 0,
+    requestsObserved: 0,
+    linksChecked: 0,
+    observationTimeouts: 0
+  };
   private truncated: string | undefined;
   private entryUnreachable = false;
   private readonly linkTargets = new Map<string, Set<string>>();
@@ -307,7 +314,9 @@ export class Scanner {
       if (input.type === 'horizontal-overflow') record.overflow = true;
     };
 
+    const reqCounter = { count: 0 };
     page.on('request', () => {
+      reqCounter.count++;
       this.stats.requestsObserved++;
     });
     page.on('dialog', (dialog) => {
@@ -510,12 +519,17 @@ export class Scanner {
         await page.setViewportSize({ ...cfg.viewports.desktop });
       }
 
-      // Bounded post-detection settle: async apps frequently schedule faults
-      // (hydration, delayed throws) shortly after load. Without this window
-      // the context closes before they fire (false negative). Listeners are
-      // live either way — this only bounds how long we stay on the page.
+      // Adaptive async-observation window: wait until the page goes quiet
+      // (no DOM mutations, no requests, no new errors) for the remainder of
+      // detection.windowMs, extending up to detection.maxWaitMs while errors
+      // keep appearing. Pages that never go quiet are flagged honestly.
       if (Date.now() <= deadline) {
-        await page.waitForTimeout(600).catch(() => undefined);
+        const outcome = await this.adaptiveObservationWindow(page, reqCounter);
+        if (outcome.timedOut) {
+          record.observationTimedOut = true;
+          this.stats.observationTimeouts++;
+          log.verbose(`[observe] async activity did not settle on ${page.url()} within maxWaitMs`);
+        }
       }
     }
 
@@ -776,6 +790,71 @@ export class Scanner {
     }
   }
 
+  /**
+   * Adaptive async-observation window (v0.3.0).
+   *
+   * Signals combined: in-page DOM mutations (MutationObserver), request
+   * activity (node-side counter) and error events. The page counts as
+   * observed when it has stayed quiet through `detection.windowMs`; while
+   * activity or errors continue, observation extends up to
+   * `detection.maxWaitMs` — hard-bounded on both sides, so long-polling or
+   * continuously animating pages can never extend a scan indefinitely.
+   * `timedOut` marks pages that never went quiet (reported to the user).
+   */
+  private async adaptiveObservationWindow(
+    page: Page,
+    reqCounter: { count: number }
+  ): Promise<{ timedOut: boolean; elapsedMs: number }> {
+    const start = Date.now();
+    const windowDeadline = start + this.cfg.detection.windowMs;
+    const hardDeadline = start + this.cfg.detection.maxWaitMs;
+    const QUIET_MS = 500; // sustained stillness required before "quiet" counts
+    let lastMutations = -1;
+    let lastRequests = -1;
+    let lastErrors = -1;
+    let lastChangeAt = start;
+    let timedOut = false;
+
+    const snapshot = async (): Promise<{ mutations: number; errors: number }> =>
+      page
+        .evaluate(() => ({
+          mutations:
+            (window as unknown as { __reprocaseActivity?: { mutations: number } }).__reprocaseActivity?.mutations ?? 0,
+          errors: (window as unknown as { __reprocaseErrorSeen?: boolean }).__reprocaseErrorSeen === true ? 1 : 0
+        }))
+        .catch(() => ({ mutations: Math.max(lastMutations, 0), errors: Math.max(lastErrors, 0) }));
+
+    for (;;) {
+      await sleep(250).catch(() => undefined);
+      const now = Date.now();
+      const snap = await snapshot();
+      const mutations = snap.mutations;
+      const requests = reqCounter.count;
+      const errors = snap.errors;
+      if (
+        lastMutations !== mutations ||
+        requests !== lastRequests ||
+        errors !== lastErrors
+      ) {
+        lastChangeAt = now;
+      }
+      lastMutations = mutations;
+      lastRequests = requests;
+      lastErrors = errors;
+
+      // Quiet must be SUSTAINED (no mutation/request/error change for
+      // QUIET_MS): two lucky consecutive samples of a 300 ms polling loop
+      // must not read as "quiet" (beat-race guard).
+      const sustainedQuiet = now - lastChangeAt >= QUIET_MS;
+      if (sustainedQuiet && now >= windowDeadline) break;
+      if (now >= hardDeadline) {
+        timedOut = true;
+        break;
+      }
+    }
+    return { timedOut, elapsedMs: Date.now() - start };
+  }
+
   /** HTTP status check of every discovered internal link, via plain fetch. */
   private async checkLinks(): Promise<void> {
     for (const [target, sources] of this.linkTargets) {
@@ -833,6 +912,7 @@ export class Scanner {
         findingsAfterDedupe: findings.length
       },
       findings,
+      clusters: aggregateFindings(findings),
       pages: this.pages,
       exploration: this.exploration,
       notChecked: NOT_CHECKED,

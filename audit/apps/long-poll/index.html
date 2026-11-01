@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Live Dashboard (long poll)</title>
+  <style>
+    body { margin: 0; font-family: system-ui, sans-serif; background: #10141f; color: #dbe4ff; }
+    main { max-width: 640px; margin: 0 auto; padding: 20px; }
+    .tick { font-variant-numeric: tabular-nums; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Live dashboard</h1>
+    <p class="tick">Polls <code>/poll.json</code> every 300 ms forever and mutates the DOM on
+    every tick — the observation window never goes fully quiet, so the scan must stop at its
+    bounded budget and flag this page as partially observed.</p>
+    <p>Deferred fault fires 1200 ms after load.</p>
+    <div id="ticks" class="tick"></div>
+  </main>
+  <script>
+    var n = 0;
+    setInterval(function () {
+      fetch('/poll.json').then(function (r) { return r.json(); }).then(function (d) {
+        n++;
+        var el = document.getElementById('ticks');
+        el.textContent = 'tick ' + n + ' seq=' + d.seq;
+      }).catch(function () {});
+    }, 300);
+    document.addEventListener('DOMContentLoaded', function () {
+      setTimeout(function () {
+        throw new Error('PollBoom: deferred dashboard fault (long-poll sample)');
+      }, 1200);
+    });
+  </script>
+</body>
+</html>

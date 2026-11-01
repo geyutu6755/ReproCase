@@ -218,6 +218,7 @@ export function collectCandidatesInPage(opts: CandidateOptions): CandidateCollec
 export const UNHANDLED_REJECTION_SCRIPT = `
 window.__reprocaseRejections = [];
 window.__reprocaseErrorSeen = false;
+window.__reprocaseActivity = { mutations: 0 };
 window.addEventListener('error', function () { window.__reprocaseErrorSeen = true; });
 window.addEventListener('unhandledrejection', function (e) {
   window.__reprocaseErrorSeen = true;
@@ -226,4 +227,9 @@ window.addEventListener('unhandledrejection', function (e) {
   var stack = r && typeof r === 'object' && r.stack ? String(r.stack) : '';
   window.__reprocaseRejections.push({ reason: msg, stack: stack });
 });
+try {
+  new MutationObserver(function (records) {
+    window.__reprocaseActivity.mutations += records.length;
+  }).observe(document.documentElement, { childList: true, subtree: true, attributes: true });
+} catch (e) { /* documentElement unavailable at init time on some documents */ }
 `;

@@ -18,6 +18,7 @@ export const DEFAULT_CONFIG: Omit<ReproCaseConfig, 'entry'> = {
   },
   allowedActions: { clickLinks: true, clickButtons: true, fillForms: false },
   exploration: { allowSelectors: [], denySelectors: [] },
+  detection: { windowMs: 1500, maxWaitMs: 5000 },
   capture: { screenshots: true, traces: 'auto' },
   verification: { attempts: 3 },
   report: { redactQuery: true }
@@ -87,6 +88,7 @@ const KNOWN_KEYS = new Set([
   'viewports',
   'allowedActions',
   'exploration',
+  'detection',
   'capture',
   'verification',
   'report'
@@ -138,6 +140,7 @@ export function resolveConfig(partial: Record<string, unknown>): ResolvedConfig 
   const viewports = isPlainObject(partial.viewports) ? partial.viewports : {};
   const allowedActions = isPlainObject(partial.allowedActions) ? partial.allowedActions : {};
   const exploration = isPlainObject(partial.exploration) ? partial.exploration : {};
+  const detection = isPlainObject(partial.detection) ? partial.detection : {};
   const capture = isPlainObject(partial.capture) ? partial.capture : {};
   const verification = isPlainObject(partial.verification) ? partial.verification : {};
   const report = isPlainObject(partial.report) ? partial.report : {};
@@ -173,6 +176,10 @@ export function resolveConfig(partial: Record<string, unknown>): ResolvedConfig 
       allowSelectors: stringList(exploration.allowSelectors, 'exploration.allowSelectors', warnings, []),
       denySelectors: stringList(exploration.denySelectors, 'exploration.denySelectors', warnings, [])
     },
+    detection: {
+      windowMs: num(detection.windowMs, 'detection.windowMs', 300, 10000, warnings, DEFAULT_CONFIG.detection.windowMs),
+      maxWaitMs: num(detection.maxWaitMs, 'detection.maxWaitMs', 1000, 20000, warnings, DEFAULT_CONFIG.detection.maxWaitMs)
+    },
     capture: {
       screenshots: bool(capture.screenshots, 'capture.screenshots', warnings, true),
       traces
@@ -185,6 +192,13 @@ export function resolveConfig(partial: Record<string, unknown>): ResolvedConfig 
     }
   };
 
+  if (config.detection.maxWaitMs < config.detection.windowMs) {
+    warnings.push(
+      `detection.maxWaitMs (${config.detection.maxWaitMs}) is below detection.windowMs ` +
+        `(${config.detection.windowMs}) — raised to windowMs`
+    );
+    config.detection.maxWaitMs = config.detection.windowMs;
+  }
   if (config.allowedActions.fillForms) {
     warnings.push('allowedActions.fillForms is true: explorers may type into inputs. Only use this on sites you own.');
   }
