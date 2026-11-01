@@ -134,10 +134,11 @@ fault through the real Playwright runner.
 
 ## Status
 
-v0.2.2 — user-adoption readiness release (real macOS/Windows CI, React/Vue framework
-baselines, document-unique locators, in-place view-switch exploration, npm publishing
-readiness). See the [changelog](CHANGELOG.md) and the
-[independent audit report](docs/audit-2026-10-31-v0.1.0.md).
+v0.3.0 — real-site coverage & intelligent fault aggregation: cross-page fault clusters,
+adaptive async observation (configurable, budgeted), open shadow DOM + same-origin iframe
+detection, `scan --compare-with` for over-time diffs. See the [changelog](CHANGELOG.md),
+[test baselines](docs/test-baselines.md) and the
+[compatibility matrix](docs/compatibility.md).
 Known limitations are listed in the changelog and in the "Not checked" section of every report.
 
 ## License

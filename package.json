@@ -1,6 +1,6 @@
 {
   "name": "reprocase",
-  "version": "0.2.2",
+  "version": "0.3.0",
   "description": "Automated website fault detection & reproduction. Scans a site in a real browser, verifies each fault independently, and emits reproducible Playwright regression tests plus human- and CI-friendly reports.",
   "type": "module",
   "license": "MIT",

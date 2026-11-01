@@ -4,6 +4,61 @@ All notable changes to ReproCase are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.3.0] — 2026-11-01
+
+Real-site coverage and intelligent fault aggregation. Two P0 capabilities — cross-page fault
+clustering and adaptive async observation — plus modern-component detection (shadow DOM,
+same-origin iframes) and a report upgrade that ties scans together over time.
+
+### Added
+
+- **Cross-page fault clusters** (`clusters` in `result.json`, primary section in the HTML
+  report): uncaught exceptions and console errors reached from several pages are grouped by a
+  conservative root-cause signature — error category + normalized top stack frame (script +
+  function) + message head. Different components with similar texts stay separate; stack-less
+  findings fall back to a message-only key, marked `signatureQuality: "message-only"`. Every
+  cluster keeps its original per-page findings (status, stability, click path, evidence)
+  expandable in the report; the raw `findings` array is untouched for traceability.
+- **Adaptive async-observation window** (`detection.windowMs` / `detection.maxWaitMs`,
+  defaults 1500/5000 ms): combines in-page DOM mutations (MutationObserver), request activity
+  and error events; observation ends early once the page is *sustainably* quiet (500 ms
+  stillness — beat-race safe) and never waits beyond the hard cap. Pages that never go quiet
+  (long polling, continuous animation) are flagged `observationTimedOut` per page and counted
+  in `stats.observationTimeouts` — partially observed pages are reported, not hidden.
+- **Open shadow DOM detection**: candidate collection, fault localization and overflow
+  measurement traverse open shadow roots; selectors cross host boundaries (Playwright-piercing
+  CSS). Verified end-to-end: a fault buried in a shadow component reproduces 3/3.
+- **Same-origin iframe detection**: per-frame candidate collection, clicks and overflow inside
+  frames whose URL is in scope; frame faults are attributed to the frame document (via stack)
+  and verified by replaying on it directly. Cross-origin frames are logged as
+  `skipped-off-scope` and never reported.
+- **`scan --compare-with <result.json>`**: embeds a "Changes vs previous scan" section
+  (new / resolved / persistent + coverage-shrink warning) into the main report and writes
+  `compare.json` into the bundle.
+- **Report upgrades**: stability filter, cluster view, compare section — all verified in a
+  real browser (keyboard, desktop + mobile, no client-side errors).
+
+### Fixed
+
+- **Ambiguous CSS fallback locators** (found on real React/Vue apps): fallback selectors are
+  now document-unique full structural paths — silent wrong-button clicks during exploration
+  and replay are gone.
+- **In-place view switching false negatives** (found on real React/Vue apps): candidates are
+  re-collected after every non-navigating click (bounded 5/page), so controls that only exist
+  after a framework state change are explored.
+- **Verification matching** normalizes whitespace on both sides — stack newlines can no longer
+  break a reproduction match.
+- **Error attribution**: page errors land on the current page URL or the matching frame URL
+  (stack-derived), with `line:col` suffixes stripped; cross-origin console/error traffic is
+  suppressed and logged instead of leaking into findings.
+
+### Verification
+
+121/121 tests (68 unit + 53 integration/e2e) incl. new suites: aggregation semantics
+(11), observation window (3), component detection (3), framework apps (2), docs↔CLI
+consistency (7), report UX (7). Multi-application baselines updated
+([docs/test-baselines.md](docs/test-baselines.md)). npm audit 0.
+
 ## [0.2.2] — 2026-11-01
 
 User-adoption readiness and release-quality release. Focus: trusted distribution, real
@@ -243,6 +298,7 @@ First verified release.
 - No accessibility, performance, or visual-regression coverage beyond horizontal overflow.
 - Single-browser (Chromium) at this stage; Firefox/WebKit untested.
 
+[0.3.0]: https://github.com/geyutu6755/ReproCase/releases/tag/v0.3.0
 [0.2.2]: https://github.com/geyutu6755/ReproCase/releases/tag/v0.2.2
 [0.2.1]: https://github.com/geyutu6755/ReproCase/releases/tag/v0.2.1
 [0.2.0]: https://github.com/geyutu6755/ReproCase/releases/tag/v0.2.0

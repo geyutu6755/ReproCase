@@ -125,9 +125,8 @@ npm run test:all   # 单元 + 集成（真实浏览器）+ CLI 端到端
 
 ## 状态
 
-v0.2.2 —— 用户采用准备版本（真实 macOS/Windows CI、React/Vue 框架基线、文档唯一选择器、就地视图切换探索、npm 发布就绪）。详见
-[变更日志](CHANGELOG.md) 与[独立审计报告](docs/audit-2026-10-31-v0.1.0.md)。
-已知限制见变更日志及每份报告中的“未检测项目”部分。
+v0.3.0 —— 真实网站覆盖与智能故障聚合：跨页面故障聚类、自适应异步观测（可配置/有预算）、开放 Shadow DOM 与同源 iframe 检测、scan --compare-with 跨扫描比较。详见
+[变更日志](CHANGELOG.md)、[测试基线](docs/test-baselines.md) 与[兼容性矩阵](docs/compatibility.md)。
 
 ## 许可证
 
