@@ -23,6 +23,21 @@ function escapeAttr(s: string): string {
   return escapeHtml(s);
 }
 
+/**
+ * Server-side guard: return the URL only when it is an absolute http(s) link,
+ * else null. Untrusted result.json values must never become a live `href`
+ * (blocks javascript:/data:/file: self-XSS in the offline report).
+ */
+function httpHref(u: string | undefined | null): string | null {
+  if (!u) return null;
+  try {
+    const p = new URL(u);
+    return p.protocol === 'http:' || p.protocol === 'https:' ? u : null;
+  } catch {
+    return null;
+  }
+}
+
 const CSS = `
 :root {
   --bg: #f5f6f8; --card: #ffffff; --ink: #111827; --muted: #6b7280; --line: #e5e7eb;
@@ -69,6 +84,7 @@ main { max-width: 1080px; margin: 0 auto; padding: 20px 24px 60px; }
 .cluster-group { font-size: 12px; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: .5px; margin: 20px 0 6px; }
 .cluster-group:first-child { margin-top: 0; }
 .cluster-caution { margin: 10px 0 0; padding: 9px 12px; background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; color: #92400e; font-size: 12.5px; line-height: 1.5; }
+.blocked-url { color: var(--muted); word-break: break-all; font-family: var(--mono); font-size: 12.5px; }
 .copy-btn { font: inherit; font-size: 12px; border: 1px solid var(--line); background: #f8fafc; color: var(--accent); border-radius: 6px; padding: 3px 10px; cursor: pointer; }
 .copy-btn:hover { border-color: var(--accent); }
 .finding { background: var(--card); border: 1px solid var(--line); border-left: 4px solid var(--muted); border-radius: 10px; padding: 16px 18px; margin-bottom: 14px; overflow-wrap: anywhere; }
@@ -137,6 +153,24 @@ const CLIENT_JS = `
   }
   function chip(cls, text) { return el('span', 'chip ' + cls, text); }
   function fmtSec(ms) { return ms >= 1000 ? (ms / 1000).toFixed(1) + 's' : ms + 'ms'; }
+  function safeHref(u) {
+    if (typeof u !== 'string' || !u) return null;
+    try {
+      var p = new URL(u, location.href);
+      return (p.protocol === 'http:' || p.protocol === 'https:') ? u : null;
+    } catch (e) { return null; }
+  }
+  function linkOrText(url, label) {
+    var h = safeHref(url);
+    if (h) {
+      var a = el('a', null, label);
+      a.href = h; a.target = '_blank'; a.rel = 'noreferrer';
+      return a;
+    }
+    var s = el('span', 'blocked-url', label);
+    s.title = 'Non-HTTP(S) link is not clickable in this report.';
+    return s;
+  }
 
   var findings = (D.findings || []).slice().sort(function (a, b) {
     if (a.status !== b.status) return a.status === 'verified' ? -1 : 1;
@@ -244,9 +278,7 @@ const CLIENT_JS = `
       details.appendChild(el('summary', null, 'Affected pages'));
       c.members.forEach(function (m) {
         var row = el('div', 'member-row');
-        var a = el('a', null, m.url);
-        a.href = m.url; a.target = '_blank'; a.rel = 'noreferrer';
-        row.appendChild(a);
+        row.appendChild(linkOrText(m.url, m.url));
         row.appendChild(el('span', null, '  [' + m.status + (m.stability ? '/' + m.stability : '') + '] repro ' + m.repro.successes + '/' + m.repro.attempts + (m.generatedTest ? ' · ' + m.generatedTest : '')));
         details.appendChild(row);
       });
@@ -386,9 +418,7 @@ const CLIENT_JS = `
       meta.appendChild(el('span', null, '')).appendChild(el('code', null, f.id));
       var page = el('span');
       page.appendChild(el('span', null, 'page: '));
-      var a = el('a', null, f.url);
-      a.href = f.url; a.target = '_blank'; a.rel = 'noreferrer';
-      page.appendChild(a);
+      page.appendChild(linkOrText(f.url, f.url));
       meta.appendChild(page);
       var rep = el('span');
       rep.appendChild(el('span', null, 'reproduced: '));
@@ -413,9 +443,8 @@ const CLIENT_JS = `
         card.appendChild(el('div', 'sect-label', 'Reproduction steps (recorded during the scan)'));
         var ol = el('ol', 'steps');
         var li0 = el('li', null, '');
-        var a0 = el('a', null, 'Open ' + (f.plan && f.plan.url ? f.plan.url : f.url));
-        a0.href = (f.plan && f.plan.url) || f.url; a0.target = '_blank'; a0.rel = 'noreferrer';
-        li0.appendChild(a0);
+        var openUrl = (f.plan && f.plan.url) || f.url;
+        li0.appendChild(linkOrText(openUrl, 'Open ' + openUrl));
         ol.appendChild(li0);
         f.steps.forEach(function (s) { ol.appendChild(el('li', null, s.description + (s.selector ? ' — ' + s.selector : ''))); });
         ol.appendChild(el('li', null, 'Observe the fault described above.'));
@@ -445,8 +474,10 @@ const CLIENT_JS = `
       var arts = [];
       (f.traces || []).forEach(function (t) {
         var row = el('span');
-        var link = el('a', null, 'browser trace (playwright show-trace)');
-        link.href = encodeURI(t); link.download = t.split('/').pop();
+        var link = el('a', null, 'browser trace (local · playwright show-trace)');
+        link.href = encodeURI(t);
+        link.download = t.split('/').pop();
+        link.title = 'Private local evidence. Trace files record raw network traffic and are not included in hosted or public copies of this report — open them from your own scan output.';
         row.appendChild(link);
         row.appendChild(el('span', null, ' — ' + t));
         arts.push(row);
@@ -484,9 +515,7 @@ const CLIENT_JS = `
     (D.pages || []).forEach(function (p) {
       var tr = el('tr');
       var urlTd = el('td', 'url');
-      var a = el('a', null, p.url);
-      a.href = p.url; a.target = '_blank'; a.rel = 'noreferrer';
-      urlTd.appendChild(a);
+      urlTd.appendChild(linkOrText(p.url, p.url));
       tr.appendChild(urlTd);
       var status = el('td');
       if (p.error) { status.appendChild(el('span', 'bad', 'network error')); status.title = p.error; }
@@ -596,6 +625,7 @@ const CLIENT_JS = `
 /** Renders the self-contained offline HTML report. No external resources. */
 export function renderHtml(result: ScanResult, compare?: CompareResult): string {
   const target = result.target?.entry ?? '';
+  const targetHref = httpHref(target);
   const typeOptions = ([
     'page-load-failure',
     'js-exception',
@@ -623,7 +653,7 @@ export function renderHtml(result: ScanResult, compare?: CompareResult): string 
     ${LOGO_SVG}
     <div class="brand">ReproCase<small>v${VERSION}</small></div>
     <div class="topmeta">
-      <div>target: <a href="${escapeAttr(target)}" rel="noreferrer">${escapeHtml(target)}</a></div>
+      <div>target: ${targetHref ? `<a href="${escapeAttr(targetHref)}" rel="noreferrer">${escapeHtml(target)}</a>` : escapeHtml(target)}</div>
       <div>finished: ${escapeHtml(result.finishedAt ?? '')} · allowed domains: ${escapeHtml((result.target?.allowedDomains ?? []).join(', ') || 'localhost')}</div>
     </div>
   </div>

@@ -257,6 +257,62 @@ describe('HTML report UX (real browser audit)', () => {
     await page.close();
   }, 120_000);
 
+  it('blocks non-HTTP(S) URLs from becoming clickable links (v0.3.2 security)', async () => {
+    // A crafted / shared / third-party result.json is a real input to the offline
+    // report a user opens; its page/plan/member/entry URLs must never be emitted as
+    // javascript:/data:/file: anchors (self-XSS on click).
+    const evilFinding = makeFinding({
+      url: 'javascript:alert(document.domain)',
+      pages: ['javascript:alert(document.domain)'],
+      plan: { kind: 'js-error', url: 'javascript:alert(document.domain)' }
+    });
+    const member = makeFinding({
+      url: 'javascript:alert(member)',
+      evidence: { message: 'Boom: shared', stack: 'Error: Boom: shared\n    at save (http://127.0.0.1:4640/app.js:1:1)' }
+    });
+    const member2 = makeFinding({
+      url: 'javascript:alert(member2)',
+      evidence: { message: 'Boom: shared', stack: 'Error: Boom: shared\n    at save (http://127.0.0.1:4640/app.js:1:1)' }
+    });
+    const result = { ...makeResult([evilFinding]) } as ScanResult;
+    result.findings = [evilFinding, member, member2];
+    result.clusters = aggregateFindings([evilFinding, member, member2]);
+    // Keep one legitimate http page so we can prove good links still render.
+    result.pages = result.pages.concat([
+      { url: 'data:text/html,<script>alert(1)</script>', depth: 0, status: 200, actions: 0, jsErrors: 0, resourceErrors: 0, overflow: false, durationMs: 1 }
+    ]);
+    result.target = { entry: 'javascript:alert(topbar)', allowedDomains: ['x'] };
+    result.summary = { verified: 1, suspected: 0, bySeverity: { critical: 0, high: 3, medium: 0, low: 0 }, byType: { 'js-exception': 3 } };
+
+    const file = path.join(path.dirname(htmlFile), 'unsafe-urls.html');
+    fs.writeFileSync(file, renderHtml(result), 'utf8');
+
+    const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+    const pageErrors: string[] = [];
+    page.on('pageerror', (e) => pageErrors.push(e.message));
+    let dialogSaw = '';
+    page.on('dialog', (d) => { dialogSaw = d.message(); d.dismiss().catch(() => undefined); });
+    await page.goto('file:///' + file.replace(/\\/g, '/'));
+    await page.waitForTimeout(250);
+
+    const state = await page.evaluate(() => {
+      const hrefs = [...document.querySelectorAll('a[href]')].map((a) => (a.getAttribute('href') || '').trim().toLowerCase());
+      return {
+        bad: hrefs.filter((h) => h.startsWith('javascript:') || h.startsWith('data:') || h.startsWith('file:')),
+        legit: hrefs.filter((h) => h.startsWith('http:') || h.startsWith('https:')).length
+      };
+    });
+    expect(state.bad, 'no javascript:/data:/file: anchors may be clickable').toEqual([]);
+    expect(state.legit, 'legitimate http(s) page links must still render').toBeGreaterThan(0);
+
+    // Clicking where a blocked URL would have been must not execute or navigate.
+    await page.click('#clusters details summary').catch(() => undefined);
+    await page.waitForTimeout(150);
+    expect(dialogSaw, 'no alert() from a blocked javascript: link').toBe('');
+    expect(pageErrors).toEqual([]);
+    await page.close();
+  }, 120_000);
+
   it('stability filter narrows findings (v0.3.0)', async () => {
     const mixed = makeResult([
       makeFinding({ title: 'stable one', evidence: { message: 'a' }, stability: 'stable' }),

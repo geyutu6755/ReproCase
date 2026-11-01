@@ -183,3 +183,31 @@ describe('report accuracy & consistency (v0.3.1)', () => {
     expect(html).toContain('🐛');
   });
 });
+
+describe('report URL safety (v0.3.2)', () => {
+  it('never renders the target entry as a live non-HTTP(S) anchor in the header', () => {
+    const html = renderHtml(
+      makeResult({ target: { entry: 'javascript:alert(1)', allowedDomains: ['x'] } })
+    );
+    // The topbar is server-rendered: it must not emit href="javascript:...".
+    expect(html).not.toMatch(/href="javascript:/i);
+    expect(html).not.toMatch(/href="data:/i);
+    // The value is still shown (escaped) as plain text, not as a clickable link.
+    expect(html).toContain('javascript:alert(1)');
+  });
+
+  it('keeps a legitimate HTTP(S) target as a clickable header link', () => {
+    const html = renderHtml(
+      makeResult({ target: { entry: 'https://example.com/app', allowedDomains: ['example.com'] } })
+    );
+    expect(html).toContain('<a href="https://example.com/app"');
+  });
+
+  it('labels trace links as private local evidence, not a public download', () => {
+    const withTrace = makeFinding({ traces: ['artifacts/traces/trace-a.zip'] });
+    const html = renderHtml(makeResult({ findings: [withTrace] }));
+    // v0.3.2 UX: the trace affordance must set expectations that hosted/public copies omit it.
+    expect(html).toMatch(/playwright show-trace/);
+    expect(html.toLowerCase()).toContain('not included in hosted');
+  });
+});
