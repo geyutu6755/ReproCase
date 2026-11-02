@@ -11,7 +11,7 @@ annotated with the run each platform result is drawn from.
 
 | Component | Windows 11 x64 (local dev) | Windows CI (windows-latest, Node 22) | Linux CI (ubuntu-latest, Node 22 & 24) | macOS CI (macos-latest, Node 22) |
 | --- | --- | --- | --- | --- |
-| Full test suite (`vitest run`) | ✅ real pass (122/122 v0.3.0; 132/132 v0.3.1; 136/136 v0.3.2; 137/137 v0.3.3) | ✅ real pass (CI @ v0.2.2) | ✅ real pass (CI @ v0.2.2) | ✅ real pass (CI @ v0.2.2) |
+| Full test suite (`vitest run`) | ✅ real pass (122/122 v0.3.0; 132/132 v0.3.1; 136/136 v0.3.2; 137/137 v0.3.3; 137/137 v0.4.0) | ✅ real pass (CI @ v0.2.2) | ✅ real pass (CI @ v0.2.2) | ✅ real pass (CI @ v0.2.2) |
 | CLI `scan` / `demo` / `init` / `doctor` / `compare` | ✅ real pass | ✅ real pass (CI e2e) | ✅ real pass (CI e2e) | ✅ real pass (CI e2e) |
 | Chromium via Playwright (headless) | ✅ real pass | ✅ real pass (CI) | ✅ real pass (`--with-deps`) | ✅ real pass (CI) |
 | Generated reproduction tests via `playwright test` | ✅ real pass | ✅ real pass (CI e2e) | ✅ real pass (CI e2e) | ✅ real pass (CI e2e) |
