@@ -32,9 +32,9 @@ business logic, and always lists what it did **not** check.
 ## Quick start
 
 ```bash
-# Try it in 30 seconds — scans the bundled demo site (4 planted faults):
+# Try it in ~30 seconds — scans the bundled demo site (4 planted faults):
 git clone https://github.com/geyutu6755/ReproCase.git
-cd ReproCase && npm install && npx playwright install chromium && npm run build
+cd ReproCase && npm install && npx playwright install chromium   # npm install auto-builds dist/
 npx reprocase demo            # writes reprocase-demo-report/report.html and opens it
 ```
 

@@ -34,7 +34,7 @@ English documentation: [README.md](README.md)
 ```bash
 # 30 秒体验 —— 扫描内置演示网站（含 4 个植入故障）：
 git clone https://github.com/geyutu6755/ReproCase.git
-cd ReproCase && npm install && npx playwright install chromium && npm run build
+cd ReproCase && npm install && npx playwright install chromium   # npm install 会自动执行 prepare 构建 dist/
 npx reprocase demo            # 输出 reprocase-demo-report/report.html 并自动打开
 ```
 
