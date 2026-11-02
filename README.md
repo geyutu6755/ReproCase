@@ -93,7 +93,8 @@ marked *unconfirmed*, never claimed as a fix. Output: `compare.json` + a self-co
   that page. Rerun with the same scope as the baseline, then compare again.
 - **SPA routes show up twice** — a deep link re-renders the app; the same JS fault is reported
   under its own URL fingerprint by design.
-- **Node version** — Node 20 or 22 (CI-tested); 18 works.
+- **Node version** — Node 22 or 24 (the current LTS lines; CI-tested on both). Node 18
+  and Node 20 reached End-of-Life (Apr 2025 / Mar 2026) and are no longer supported.
 
 ## Safety & privacy by default
 

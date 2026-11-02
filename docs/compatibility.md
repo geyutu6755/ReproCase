@@ -4,12 +4,12 @@ Honest status per platform. "Real pass" means the full automated suite (or the l
 components) actually ran on that platform; nothing here is inferred from source review.
 The **Windows local** column is re-run for every release and reports the current suite:
 122/122 at v0.3.0, 132/132 at v0.3.1 and 136/136 at v0.3.2. The full `ci.yml` matrix
-(Windows / macOS / Ubuntu Node 20 & 22) runs on every push to `main` and every PR; the
+(Windows / macOS / Ubuntu Node 22 & 24) runs on every push to `main` and every PR; the
 v0.3.1 matrix (run #41295959003) completed **success** on all four OS jobs, and the v0.3.2
 results are attached to that release's PR/push once observed. The matrix cells below are
 annotated with the run each platform result is drawn from.
 
-| Component | Windows 11 x64 (local dev) | Windows CI (windows-latest, Node 22) | Linux CI (ubuntu-latest, Node 20 & 22) | macOS CI (macos-latest, Node 22) |
+| Component | Windows 11 x64 (local dev) | Windows CI (windows-latest, Node 22) | Linux CI (ubuntu-latest, Node 22 & 24) | macOS CI (macos-latest, Node 22) |
 | --- | --- | --- | --- | --- |
 | Full test suite (`vitest run`) | ✅ real pass (122/122 v0.3.0; 132/132 v0.3.1; 136/136 v0.3.2; 137/137 v0.3.3) | ✅ real pass (CI @ v0.2.2) | ✅ real pass (CI @ v0.2.2) | ✅ real pass (CI @ v0.2.2) |
 | CLI `scan` / `demo` / `init` / `doctor` / `compare` | ✅ real pass | ✅ real pass (CI e2e) | ✅ real pass (CI e2e) | ✅ real pass (CI e2e) |
@@ -21,7 +21,8 @@ annotated with the run each platform result is drawn from.
 
 Notes:
 
-- Node.js: 20 and 22 are CI-tested; 18 is the minimum supported version.
+- Node.js: **22 and 24** are the supported, CI-tested LTS lines. Node 18 (EOL Apr 2025)
+  and Node 20 (EOL Mar 2026) reached End-of-Life and are no longer supported.
 - CI action runtimes: as of v0.3.3 the workflow uses the Node-24 majors
   (`checkout@v5`, `setup-node@v5`, `upload-artifact@v6`, `configure-pages@v6`,
   `deploy-pages@v5`) — Node 20 was removed from GitHub-hosted runners on

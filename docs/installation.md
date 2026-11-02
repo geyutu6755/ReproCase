@@ -2,7 +2,8 @@
 
 ## Requirements
 
-- Node.js ≥ 18 (tested on 20 and 22)
+- Node.js ≥ 22 (the current LTS lines; CI-tested on 22 and 24). Node 18 and 20 are
+  End-of-Life and no longer supported.
 - Chromium, installed via Playwright (one command, ~120 MB download)
 
 ## Install from this repository
@@ -10,15 +11,14 @@
 ```bash
 git clone https://github.com/geyutu6755/ReproCase.git
 cd ReproCase
-npm install
+npm install                    # the `prepare` script compiles dist/ automatically
 npx playwright install chromium
-npm run build
 ```
 
-Install globally from GitHub (no clone needed):
+Install globally straight from GitHub (no clone needed — `prepare` builds it):
 
 ```bash
-npm install -g github:geyutu6755/ReproCase
+npm install -g github:geyutu6755/ReproCase#v0.4.0
 npx playwright install chromium
 reprocase --version
 ```
@@ -29,8 +29,10 @@ Or run ad hoc:
 npx github:geyutu6755/ReproCase demo
 ```
 
-> `@playwright/test` and `playwright` ship as dependencies of ReproCase; the only extra step is
+> `@playwright/test` and `playwright` ship as dependencies; the only extra step is
 > downloading the Chromium browser binary with `npx playwright install chromium`.
+> Installing from a released **tarball** (below) or the npm registry skips the build —
+> `dist/` is already in the package.
 
 ## Verify the installation
 
