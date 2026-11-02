@@ -34,7 +34,7 @@ English documentation: [README.md](README.md)
 ```bash
 # 30 秒体验 —— 扫描内置演示网站（含 4 个植入故障）：
 git clone https://github.com/geyutu6755/ReproCase.git
-cd ReproCase && npm install && npx playwright install chromium && npm run build
+cd ReproCase && npm install && npx playwright install chromium   # npm install 会自动执行 prepare 构建 dist/
 npx reprocase demo            # 输出 reprocase-demo-report/report.html 并自动打开
 ```
 
@@ -90,7 +90,7 @@ my-report/
   范围重扫后再比较。
 - **SPA 路由出现重复发现** —— 深链接会重新渲染应用；同一 JS 故障以其自身 URL 指纹
   报告属预期行为。
-- **Node 版本** —— 推荐 20 或 22（CI 已测）；18 可用。
+- **Node 版本** —— 推荐 22 或 24（当前 LTS 主线，CI 已覆盖两者）；Node 18 与 20 已停止维护（分别于 2025-04、2026-03 EOL），不再支持。
 
 ## 默认安全与隐私
 
@@ -125,7 +125,7 @@ npm run test:all   # 单元 + 集成（真实浏览器）+ CLI 端到端
 
 ## 状态
 
-v0.3.3 —— 报告附件安全后续修复与 CI 运行时维护：Trace/截图附件路径改为"仅本地相对路径"校验（不可信 `result.json` 无法再把它们变成 `javascript:`/`data:` 链接或路径穿越来源），正常本地附件仍可打开；CI Action 升级到 Node-24 运行时主版本（GitHub 运行器已移除 Node 20）。基于 v0.3.2（报告链接协议校验、Trace 诚实标注）、v0.3.1（故障聚类诚实表述、聚类需跨≥2页、`issues.md` 表头准确）与 v0.3.0 特性线——跨页面故障聚类、自适应异步观测（可配置/有预算）、开放 Shadow DOM 与同源 iframe 检测、scan --compare-with。详见
+v0.4.0 —— 面向"降低安装与首次使用门槛"的发布：一步式源码安装（新增 `prepare` 自动构建 `dist/`，`npm i -g github:…#tag` 现可正常使用，快速上手机械去掉手动 `npm run build`）；统一 Node 基线为 **22+**（Node 18/20 已 EOL，CI 覆盖 22 与 24）；修复已废弃的 Vitest `poolOptions` 配置；并更新为真实截图。检测能力与 v0.3.x 保持一致——跨页面故障聚类、自适应异步观测、开放 Shadow DOM 与同源 iframe 检测、`scan --compare-with`，以及 v0.3.2–v0.3.3 的报告/附件安全加固。详见
 [变更日志](CHANGELOG.md)、[测试基线](docs/test-baselines.md) 与[兼容性矩阵](docs/compatibility.md)。
 
 ## 许可证

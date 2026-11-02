@@ -4,6 +4,39 @@ All notable changes to ReproCase are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.4.0] — 2026-11-02
+
+Lower the barrier to first install and adoption. No new detection rules and no UI
+rebuild — this release fixes the deprecated test config, reconciles the supported
+Node baseline, and makes installing/first-run one step shorter and self-consistent.
+
+### Changed
+
+- **Node.js baseline is now 22.** Node 18 (EOL Apr 2025) and Node 20 (EOL Mar 2026)
+  reached End-of-Life and are no longer supported. `engines.node` is `>=22`, and the
+  README (en/zh), `docs/installation.md`, `docs/compatibility.md` and the CI matrix now
+  agree (CI-tested on the current LTS lines **22 and 24**). `reprocase doctor`'s Node
+  check was updated to match (previously it accepted 18/20 while the package required
+  them — a real inconsistency).
+- **One-step source install.** Added `prepare: npm run build`, so `npm install` compiles
+  `dist/`. This fixes `npm install -g github:geyutu6755/ReproCase#vX.Y.Z` (which
+  previously shipped unbuilt TypeScript with no runnable `bin`) and removes the manual
+  `npm run build` from the quick start. Verified: a clean source install rebuilds `dist/`
+  and the CLI runs. Installing a released tarball or (future) npm package is unchanged.
+- **Deprecated Vitest config removed.** `test.poolOptions` was dropped in Vitest 4;
+  `poolOptions.forks.singleFork` becomes top-level `maxWorkers: 1` with per-file
+  isolation left at its default, so test isolation and cross-platform behaviour are
+  unchanged (suite 137/137, deprecation warning gone).
+
+### Docs / presentation
+
+- README screenshots refreshed from the current demo report rendered in real Chromium.
+- Accuracy validated against an **independent** probe application (not the bundled demo):
+  cross-page reliable clusters, lazy/async + unhandled-rejection detection, same-page
+  de-duplication, out-of-scope/`mailto:`/`javascript:` links correctly ignored, risky
+  buttons skipped (never clicked), forms untouched, and two scans reproducing the same
+  finding set.
+
 ## [0.3.3] — 2026-11-01
 
 Report attachment security follow-up plus CI action-runtime maintenance. No new

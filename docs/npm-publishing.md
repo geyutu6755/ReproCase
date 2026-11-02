@@ -17,7 +17,8 @@ It intentionally contains no tokens and asks for none in chat.
 - `files` whitelist ships `dist/` + `examples/demo-site` + docs; `npm pack` verified end-to-end
   (tarball → isolated install → `npx reprocase --version/init/demo`) on Windows and Linux CI.
 - `bin: { "reprocase": "dist/cli.js" }` with a `#!/usr/bin/env node` shebang.
-- `engines: { "node": ">=18" }`; `prepublishOnly: npm run build`.
+- `engines: { "node": ">=22" }`; `prepare: npm run build` compiles `dist/` on publish and on
+  `npm install`-from-source (git/tarball) installs.
 - No install/postinstall scripts run in the published package (Playwright browsers are a
   documented explicit `npx playwright install chromium` step — nothing phones home at install).
 - `npm audit` clean at release time.

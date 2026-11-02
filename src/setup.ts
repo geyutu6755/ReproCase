@@ -75,24 +75,15 @@ async function checkBrowser(): Promise<CheckResult> {
 
 function checkNode(): CheckResult {
   const major = Number(process.versions.node.split('.')[0]);
-  if (major >= 20) {
+  if (major >= 22) {
     return { id: 'node', title: 'Node.js version', status: 'ok', detail: process.versions.node };
-  }
-  if (major >= 18) {
-    return {
-      id: 'node',
-      title: 'Node.js version',
-      status: 'warn',
-      detail: `${process.versions.node} works, but Node 20+ is recommended`,
-      fix: 'upgrade Node.js to 20 or 22 (CI-tested versions)'
-    };
   }
   return {
     id: 'node',
     title: 'Node.js version',
     status: 'fail',
-    detail: `${process.versions.node} — ReproCase requires Node >= 18`,
-    fix: 'upgrade Node.js (https://nodejs.org)'
+    detail: `${process.versions.node} is unsupported — ReproCase requires Node >= 22 (Node 18 & 20 are End-of-Life)`,
+    fix: 'install an LTS runtime: Node 22 or 24 (https://nodejs.org)'
   };
 }
 

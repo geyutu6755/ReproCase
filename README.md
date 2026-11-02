@@ -32,9 +32,9 @@ business logic, and always lists what it did **not** check.
 ## Quick start
 
 ```bash
-# Try it in 30 seconds — scans the bundled demo site (4 planted faults):
+# Try it in ~30 seconds — scans the bundled demo site (4 planted faults):
 git clone https://github.com/geyutu6755/ReproCase.git
-cd ReproCase && npm install && npx playwright install chromium && npm run build
+cd ReproCase && npm install && npx playwright install chromium   # npm install auto-builds dist/
 npx reprocase demo            # writes reprocase-demo-report/report.html and opens it
 ```
 
@@ -93,7 +93,8 @@ marked *unconfirmed*, never claimed as a fix. Output: `compare.json` + a self-co
   that page. Rerun with the same scope as the baseline, then compare again.
 - **SPA routes show up twice** — a deep link re-renders the app; the same JS fault is reported
   under its own URL fingerprint by design.
-- **Node version** — Node 20 or 22 (CI-tested); 18 works.
+- **Node version** — Node 22 or 24 (the current LTS lines; CI-tested on both). Node 18
+  and Node 20 reached End-of-Life (Apr 2025 / Mar 2026) and are no longer supported.
 
 ## Safety & privacy by default
 
@@ -134,15 +135,13 @@ fault through the real Playwright runner.
 
 ## Status
 
-v0.3.3 — report attachment security follow-up and CI action-runtime maintenance:
-trace / screenshot attachment paths are now validated as local-relative (a crafted
-`result.json` can no longer turn them into `javascript:`/`data:` links or path-traversal
-sources), while normal local artifacts still work; CI actions moved to Node-24 runtime
-majors (Node 20 was removed from GitHub runners). Builds on v0.3.2 (report link-scheme
-hardening, honest trace labelling), v0.3.1 (honest fault-cluster labelling, ≥2-page clusters,
-accurate `issues.md`) and the v0.3.0 line — cross-page fault clusters, adaptive async
-observation (configurable, budgeted), open shadow DOM + same-origin iframe detection and
-`scan --compare-with`. See the [changelog](CHANGELOG.md),
+v0.4.0 — adoption-focused release: a one-step source install (`prepare` builds `dist/`, so
+`npm i -g github:…#tag` now works and the quick start drops the manual build), a reconciled
+Node baseline (**22+**, since Node 18/20 are End-of-Life; CI-tested on 22 & 24), the deprecated
+Vitest `poolOptions` config fixed, and refreshed real screenshots. Detection itself is unchanged
+from v0.3.x — cross-page fault clusters, adaptive async observation, shadow DOM + same-origin
+iframe detection, `scan --compare-with`, and the report/attachment security hardening of
+v0.3.2–v0.3.3. See the [changelog](CHANGELOG.md),
 [test baselines](docs/test-baselines.md) and the
 [compatibility matrix](docs/compatibility.md).
 Known limitations are listed in the changelog and in the "Not checked" section of every report.

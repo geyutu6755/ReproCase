@@ -1,6 +1,6 @@
 {
   "name": "reprocase",
-  "version": "0.3.3",
+  "version": "0.4.0",
   "description": "Automated website fault detection & reproduction. Scans a site in a real browser, verifies each fault independently, and emits reproducible Playwright regression tests plus human- and CI-friendly reports.",
   "type": "module",
   "license": "MIT",
@@ -24,7 +24,7 @@
     "cli"
   ],
   "engines": {
-    "node": ">=18"
+    "node": ">=22"
   },
   "bin": {
     "reprocase": "dist/cli.js"
@@ -39,7 +39,7 @@
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "prepublishOnly": "npm run build",
+    "prepare": "npm run build",
     "test": "vitest run tests/unit",
     "test:all": "vitest run",
     "test:e2e": "vitest run tests/e2e"
