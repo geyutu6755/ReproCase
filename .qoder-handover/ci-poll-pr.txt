@@ -1,0 +1,11 @@
+2026-11-01T10:02:56.196Z run#41295680342 in_progress -
+2026-11-01T10:03:16.957Z run#41295680342 in_progress -
+poll error TypeError: fetch failed
+2026-11-01T10:04:08.336Z run#41295680342 in_progress -
+2026-11-01T10:04:29.052Z run#41295680342 in_progress -
+2026-11-01T10:04:49.766Z run#41295680342 completed success
+=== JOBS ===
+Test (ubuntu-latest, Node 20) => success
+Test (ubuntu-latest, Node 22) => success
+Test (macos-latest, Node 22) => success
+Test (windows-latest, Node 22) => success

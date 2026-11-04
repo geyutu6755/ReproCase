@@ -80,6 +80,22 @@ only reported **resolved** when the current scan actually covered its page — s
 marked *unconfirmed*, never claimed as a fix. Output: `compare.json` + a self-contained
 `compare.html`.
 
+## CI / GitHub Actions
+
+Run ReproCase on every push or PR against your own site — clean passes, new faults gate the
+build, reports land as artifacts (traces stripped before upload):
+
+~~~yaml
+- name: ReproCase scan
+  uses: geyutu6755/ReproCase/.github/actions/reprocase-scan@v0.5.0
+  with:
+    url: http://localhost:3000/
+    compare-with: .reprocase/baseline/result.json
+~~~
+
+Full inputs, exit-code semantics and the baseline flow:
+[docs/github-actions.md](docs/github-actions.md).
+
 ## FAQ & troubleshooting
 
 - **"Refusing to scan non-local host"** — ReproCase only scans localhost unless you list the
@@ -116,6 +132,7 @@ See [docs/architecture.md](docs/architecture.md) for the full model.
 - [Configuration](docs/configuration.md) ([example config](reprocase.config.example.json))
 - [Architecture](docs/architecture.md)
 - [Test baselines](docs/test-baselines.md) · [Compatibility matrix](docs/compatibility.md)
+- [GitHub Actions integration](docs/github-actions.md)
 - [npm publishing](docs/npm-publishing.md)
 - [Contributing](CONTRIBUTING.md) · [Security policy](SECURITY.md) · [Changelog](CHANGELOG.md) · [License (MIT)](LICENSE)
 
@@ -135,7 +152,7 @@ fault through the real Playwright runner.
 
 ## Status
 
-v0.4.0 — adoption-focused release: a one-step source install (`prepare` builds `dist/`, so
+v0.5.0 — developer-workflow integration release (composite GitHub Action, baseline new-fault gating, honest CI exit semantics, cluster-aware issue markdown). See the [changelog](CHANGELOG.md), the [Actions guide](docs/github-actions.md) and the [compatibility matrix](docs/compatibility.md).
 `npm i -g github:…#tag` now works and the quick start drops the manual build), a reconciled
 Node baseline (**22+**, since Node 18/20 are End-of-Life; CI-tested on 22 & 24), the deprecated
 Vitest `poolOptions` config fixed, and refreshed real screenshots. Detection itself is unchanged

@@ -1,0 +1,187 @@
+name: 'ReproCase scan'
+description: >
+  Run a ReproCase website scan inside this job (same runner, so localhost test
+  servers work), publish a privacy-stripped report artifact, and optionally gate
+  on new findings by comparing against a committed baseline result.json.
+branding:
+  icon: 'search'
+  color: 'blue'
+
+inputs:
+  url:
+    description: 'Entry URL to scan (e.g. http://localhost:3000/ — start your site in an earlier step).'
+    required: true
+  reprocase-ref:
+    description: 'ReproCase version to install (tag, branch or commit). Defaults to the ref this action was pinned to.'
+    required: false
+    default: ''
+  config:
+    description: 'Optional path to a reprocase.config.json in your repository (overrides URL budgets).'
+    required: false
+    default: ''
+  compare-with:
+    description: 'Optional path to a baseline result.json (from a previous scan artifact or a committed file). Enables new/resolved/persistent diffing.'
+    required: false
+    default: ''
+  fail-on:
+    description: 'Exit 1 when "verified" or "suspected" findings exist, or "never" (report only).'
+    required: false
+    default: 'verified'
+  fail-on-new:
+    description: 'When compare-with is set: exit 1 if any NEW findings exist. Default true.'
+    required: false
+    default: 'true'
+  max-pages:
+    description: 'Maximum pages to visit (scan budget).'
+    required: false
+    default: ''
+  detection-window-ms:
+    description: 'Async observation window in ms (higher = catches later hydration faults, slower scan).'
+    required: false
+    default: ''
+  report-name:
+    description: 'Artifact name for the report bundle.'
+    required: false
+    default: 'reprocase-report'
+  node-version:
+    description: 'Node.js version to run ReproCase with.'
+    required: false
+    default: '22'
+
+outputs:
+  verdict:
+    description: 'clean (exit 0) | findings (exit 1) | error (exit 2)'
+    value: ${{ steps.scan.outputs.verdict }}
+  exit-code:
+    description: 'Raw scanner exit code (0/1/2).'
+    value: ${{ steps.scan.outputs.exit-code }}
+  new-findings:
+    description: 'Number of new findings vs the baseline (empty when no baseline was given).'
+    value: ${{ steps.gate.outputs.new-findings }}
+
+runs:
+  using: 'composite'
+  steps:
+    - uses: actions/setup-node@v5
+      with:
+        node-version: ${{ inputs.node-version }}
+
+    - name: Install ReproCase
+      shell: bash
+      env:
+        REPROCASE_REF: ${{ inputs.reprocase-ref || github.action_ref }}
+      run: |
+        set -euo pipefail
+        REF="${REPROCASE_REF}"
+        case "$REF" in
+          ''|refs/*) REF="v0.5.0" ;;
+        esac
+        SRC="${RUNNER_TEMP}/reprocase-src"
+        rm -rf "$SRC"
+        echo "Installing ReproCase from github.com/geyutu6755/ReproCase ($REF)"
+        git clone --depth 1 --branch "$REF" https://github.com/geyutu6755/ReproCase.git "$SRC"
+        cd "$SRC"
+        # Global installs omit devDependencies, and the TypeScript build needs
+        # them — so build here (npm ci includes dev deps) and install the
+        # built package globally.
+        npm install --no-fund --no-audit
+        npm run build
+        npm install -g --no-fund --no-audit .
+        reprocase --version
+
+    - name: Install Chromium
+      shell: bash
+      run: |
+        set -euo pipefail
+        # Idempotent: cached installs complete in seconds.
+        npx playwright install chromium
+
+    - name: Run scan
+      id: scan
+      shell: bash
+      env:
+        URL: ${{ inputs.url }}
+        CONFIG: ${{ inputs.config }}
+        FAIL_ON: ${{ inputs.fail-on }}
+        MAX_PAGES: ${{ inputs.max-pages }}
+        DETECTION_WINDOW_MS: ${{ inputs.detection-window-ms }}
+      run: |
+        set -uo pipefail
+        ARGS=(scan --url "$URL" --out reprocase-report --fail-on "$FAIL_ON" --no-traces)
+        [ -n "$CONFIG" ] && ARGS+=(--config "$CONFIG")
+        [ -n "$MAX_PAGES" ] && ARGS+=(--max-pages "$MAX_PAGES")
+        [ -n "$DETECTION_WINDOW_MS" ] && ARGS+=(--detection-window-ms "$DETECTION_WINDOW_MS")
+        set +e
+        reprocase "${ARGS[@]}"
+        CODE=$?
+        set -e
+        echo "exit-code=$CODE" >> "$GITHUB_OUTPUT"
+        case "$CODE" in
+          0)
+            echo "verdict=clean" >> "$GITHUB_OUTPUT"
+            echo "ReproCase: scan completed with no findings at or above the threshold."
+            ;;
+          1)
+            echo "verdict=findings" >> "$GITHUB_OUTPUT"
+            echo "ReproCase: scan completed — findings exist at or above the threshold."
+            ;;
+          2)
+            echo "verdict=error" >> "$GITHUB_OUTPUT"
+            echo "::error::ReproCase could not run properly (exit 2). This is an environment or configuration problem, NOT a verdict about your website. See the log above; 'reprocase doctor' diagnoses most causes."
+            ;;
+          *)
+            echo "verdict=error" >> "$GITHUB_OUTPUT"
+            echo "::error::ReproCase exited unexpectedly (code $CODE)."
+            ;;
+        esac
+        exit "$CODE"
+
+    - name: Compare with baseline (new-fault gate)
+      id: gate
+      if: ${{ inputs.compare-with != '' }}
+      shell: bash
+      env:
+        BASELINE: ${{ inputs.compare-with }}
+        FAIL_ON_NEW: ${{ inputs.fail-on-new }}
+      run: |
+        set -uo pipefail
+        if [ ! -f "$BASELINE" ]; then
+          echo "::notice::Baseline '$BASELINE' not found — first run on this branch? Skipping the new-findings gate; this scan becomes the new baseline candidate."
+          echo "new-findings=" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+        if [ ! -f reprocase-report/result.json ]; then
+          echo "::error::Scan produced no result.json — the scan may have failed before writing results. Cannot compare."
+          exit 1
+        fi
+        GATE_ARGS=(compare "$BASELINE" reprocase-report/result.json --out reprocase-report/compare --fail-on new)
+        set +e
+        reprocase "${GATE_ARGS[@]}"
+        CODE=$?
+        set -e
+        NEW=$(node -e "const r=require('./reprocase-report/compare/compare.json');console.log(r.summary.newCount)" 2>/dev/null || echo 0)
+        echo "new-findings=$NEW" >> "$GITHUB_OUTPUT"
+        case "$CODE" in
+          0) echo "ReproCase compare: no new findings." ;;
+          1) echo "::error::ReproCase compare: $NEW new finding(s) vs baseline (coverage shrank = unconfirmed, see report)." ; exit 1 ;;
+          2) echo "::error::ReproCase compare failed to run (bad baseline file?). Fix the baseline or remove compare-with." ; exit 1 ;;
+        esac
+
+    - name: Publish privacy-stripped report
+      if: ${{ always() }}
+      shell: bash
+      run: |
+        set -euo pipefail
+        # Traces record raw network traffic (incl. unredacted URLs) — private
+        # evidence, never uploaded. Screenshots are of YOUR site: keep them,
+        # they belong to you. result.json / report.html / issues.md are
+        # redacted at source (token/session query params).
+        rm -rf reprocase-report/artifacts/traces
+        ls reprocase-report
+
+    - uses: actions/upload-artifact@v4
+      if: ${{ always() }}
+      with:
+        name: ${{ inputs.report-name }}
+        path: reprocase-report/
+        retention-days: 14

@@ -115,3 +115,45 @@ link to a missing page, a mobile-only horizontal overflow, and a 404 image — p
 control pages. The integration and e2e suites assert all four faults are found, the control
 pages produce zero findings, and generated tests reproduce every fault through the real
 Playwright runner.
+
+
+## v0.3.0 additions: aggregation, adaptive observation, components
+
+**Cross-page fault clusters.** Uncaught exceptions and console errors are identified per page,
+so the same root cause reached from several routes currently produces one finding per page.
+`aggregateFindings` groups them into `FaultCluster`s using a conservative key: error
+category + normalized top stack frame (script basename + function) + message head. The frame
+only carries cross-page signal when it names a SHARED script — an inline frame whose script
+equals the page document degrades the key to message-only (marked `signatureQuality`).
+Resource, broken-link and page-load findings already aggregate by target-URL fingerprint.
+Clusters are a VIEW: `findings` stays complete for traceability, and compare works on
+stable keys of either layer.
+
+**Adaptive async-observation window.** Replaces the fixed settle. Signals: MutationObserver
+mutation counts (in-page), the node-side request counter, and error events. A page counts as
+observed after it has been *sustainably quiet* (500 ms without any signal change) through
+`detection.windowMs`; while signals keep changing, observation extends up to
+`detection.maxWaitMs` — a hard cap so long-polling pages cannot stall a scan. Pages that
+never go quiet are flagged `observationTimedOut` per page and counted in stats. A 250 ms
+sample cadence plus the 500 ms sustained-quiet rule prevents beat-race false quiets.
+
+**Modern components.** Candidate collection, fault localization and overflow measurement
+traverse OPEN shadow roots (Playwright's CSS pierces them; selectors are composed across host
+boundaries). Same-origin iframes get their own bounded exploration pass (5 frames × 3 actions)
+with overflow measured per frame; frame faults are attributed via their stack URLs and
+verified by replaying on the frame document. Cross-origin frames and closed shadow roots are
+logged as out-of-scope and never reported.
+
+**CI integration.** A composite action (`.github/actions/reprocase-scan`) runs scans inside
+third-party jobs: pinned-ref install (clone + npm ci + build + global install of the built
+package — global mode strips devDependencies, so install-time building would fail), the same
+exit-code semantics, a baseline new-faults gate with first-run grace, and privacy-stripped
+artifacts (traces deleted before upload). Accepted externally in
+[reprocase-actions-demo](https://github.com/geyutu6755/reprocase-actions-demo).
+
+## v0.5.0 additions: workflow integration detail
+
+Exit-code contract for CI consumers: 0 = clean, 1 = findings at/above threshold (a verdict
+about the site), 2 = ReproCase could not run properly (environment/configuration — never
+presented as a site verdict; the action annotates this distinction explicitly). The action
+outputs `verdict`, `exit-code` and `new-findings` for downstream steps.

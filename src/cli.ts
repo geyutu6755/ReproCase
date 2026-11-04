@@ -115,6 +115,7 @@ interface ScanCliOptions {
   maxPages?: number;
   depth?: number;
   timeout?: number;
+  detectionWindowMs?: number;
   failOn: FailOn;
   compareWith?: string;
   screenshots: boolean;
@@ -137,6 +138,9 @@ async function runScan(opts: ScanCliOptions): Promise<void> {
   if (opts.maxPages !== undefined) partial.maxPages = opts.maxPages;
   if (opts.depth !== undefined) partial.maxDepth = opts.depth;
   if (opts.timeout !== undefined) partial.runTimeoutMs = opts.timeout;
+  if (opts.detectionWindowMs !== undefined) {
+    partial.detection = { ...(partial.detection as Record<string, unknown> | undefined), windowMs: opts.detectionWindowMs };
+  }
 
   const { config, warnings } = resolveConfig(partial);
   if (!opts.screenshots) config.capture.screenshots = false;
@@ -236,6 +240,7 @@ program
   .option('--max-pages <n>', 'maximum number of pages to visit', intArg)
   .option('--depth <n>', 'maximum crawl depth from the entry page', intArg)
   .option('--timeout <ms>', 'overall run timeout in milliseconds', intArg)
+  .option('--detection-window-ms <ms>', 'async observation window in ms (default 1500; higher catches later hydration faults)', intArg)
   .option('--fail-on <mode>', 'exit 1 when "verified" or "suspected" findings exist, or "never"', failOnArg, 'verified')
   .option('--compare-with <file>', 'diff against a previous result.json and embed the comparison in the report')
   .option('--no-screenshots', 'disable screenshot capture')

@@ -1,0 +1,105 @@
+[1m[43m DEPRECATED [49m[22m [33m`test.poolOptions` was removed in Vitest 4. All previous `poolOptions` are now top-level options. Please, refer to the migration guide: https://v4.vitest.dev/guide/migration#pool-rework[39m
+
+[1m[30m[46m RUN [49m[39m[22m [36mv5.0.5 [39m[90mE:/ai测试/ReproCase[39m
+
+ [32m✓[39m tests/unit/generate-tests.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 57[2mms[22m[39m
+ [32m✓[39m tests/unit/net.test.ts [2m([22m[2m18 tests[22m[2m)[22m[32m 15[2mms[22m[39m
+ [32m✓[39m tests/unit/findings.test.ts [2m([22m[2m11 tests[22m[2m)[22m[32m 48[2mms[22m[39m
+ [32m✓[39m tests/unit/config.test.ts [2m([22m[2m13 tests[22m[2m)[22m[32m 53[2mms[22m[39m
+ [32m✓[39m tests/unit/aggregate.test.ts [2m([22m[2m15 tests[22m[2m)[22m[32m 40[2mms[22m[39m
+ [32m✓[39m tests/unit/compare.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 11[2mms[22m[39m
+ [32m✓[39m tests/unit/report.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 13[2mms[22m[39m
+ [32m✓[39m tests/unit/dev-server.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 142[2mms[22m[39m
+[scan] page 1/6: http://127.0.0.1:63324/
+[scan] page 1/12: http://127.0.0.1:63323/
+[scan] page 1/2: http://127.0.0.1:63328/
+[scan] page 1/3: http://127.0.0.1:63329/
+[scan] page 1/2: http://127.0.0.1:63331/
+ [32m✓[39m tests/integration/compare-html.test.ts [2m([22m[2m1 test[22m[2m)[22m[33m 2978[2mms[22m[39m
+   [32m✓[39m compare.html renders in a real browser [2m(1)[22m
+     [33m[2m✓[22m[39m populates summary, new/resolved/persistent sections without page errors[33m 2965[2mms[22m[39m
+[scan] page 2/6: http://127.0.0.1:63324/internal.html
+[scan] page 2/12: http://127.0.0.1:63323/clean.html
+[scan] page 3/12: http://127.0.0.1:63323/clean-2.html
+ [32m✓[39m tests/e2e/docs-consistency.test.ts [2m([22m[2m7 tests[22m[2m)[22m[33m 8970[2mms[22m[39m
+[scan] page 1/2: http://127.0.0.1:54324/
+ [32m✓[39m tests/integration/report-ux.test.ts [2m([22m[2m8 tests[22m[2m)[22m[33m 8667[2mms[22m[39m
+   [32m✓[39m HTML report UX (real browser audit) [2m(8)[22m
+     [33m[2m✓[22m[39m keyboard: toolbar controls are reachable, screenshots open/close with Enter and Escape[33m 818[2mms[22m[39m
+     [33m[2m✓[22m[39m search filters findings live and the copy button works from file:// (fallback path)[33m 1070[2mms[22m[39m
+     [33m[2m✓[22m[39m long unbroken tokens never cause horizontal page overflow (desktop + mobile)[33m 1182[2mms[22m[39m
+     [33m[2m✓[22m[39m empty scan shows a clear all-clear state and hides the toolbar[33m 822[2mms[22m[39m
+     [33m[2m✓[22m[39m clusters render with expandable affected pages (v0.3.0)[33m 711[2mms[22m[39m
+     [33m[2m✓[22m[39m clusters render honestly: reliable = confirmed root cause, message-only = possible duplicate (v0.3.1)[33m 749[2mms[22m[39m
+     [33m[2m✓[22m[39m stability filter narrows findings (v0.3.0)[33m 532[2mms[22m[39m
+     [33m[2m✓[22m[39m embedded compare section shows new/resolved/persistent with coverage warning (v0.3.0)[33m 742[2mms[22m[39m
+[scan] page 1/4: http://127.0.0.1:64617/
+[scan] page 1/3: http://127.0.0.1:63330/
+[scan] page 4/12: http://127.0.0.1:63323/js-error.html
+[scan] page 1/2: http://127.0.0.1:63332/
+[scan] page 1/2: http://127.0.0.1:63328/
+[scan] page 2/4: http://127.0.0.1:64617/other.html
+[scan] page 5/12: http://127.0.0.1:63323/broken-link.html
+[scan] page 1/4: http://127.0.0.1:55676/
+[scan] page 6/12: http://127.0.0.1:63323/overflow.html
+ [32m✓[39m tests/integration/observation-window.test.ts [2m([22m[2m3 tests[22m[2m)[22m[33m 17955[2mms[22m[39m
+   [32m✓[39m adaptive async-observation window [2m(3)[22m
+     [33m[2m✓[22m[39m default window catches a fault 1000 ms after load (missed by the fixed 600 ms settle)[33m 7121[2mms[22m[39m
+     [33m[2m✓[22m[39m a short window does not keep the page alive for faults beyond its budget (budget is real)[33m 3738[2mms[22m[39m
+     [33m[2m✓[22m[39m long-polling page: bounded wait, fault detected, page flagged as not fully observed[33m 7076[2mms[22m[39m
+[scan] page 2/4: http://127.0.0.1:55676/detail.html?token=sekrit42&fine=1
+[scan] page 7/12: http://127.0.0.1:63323/broken-image.html
+[scan] page 1/2: http://127.0.0.1:63328/
+ [32m✓[39m tests/integration/framework-apps.test.ts [2m([22m[2m2 tests[22m[2m)[22m[33m 22589[2mms[22m[39m
+   [32m✓[39m framework applications (real React/Vue runtimes) [2m(2)[22m
+     [33m[2m✓[22m[39m React: explores controls rendered after an in-place state switch (no URL change)[33m 8274[2mms[22m[39m
+     [33m[2m✓[22m[39m Vue: reproduces a console-reported handler error 3/3 with a unique-locator path[33m 14297[2mms[22m[39m
+[scan] page 8/12: http://127.0.0.1:63323/index.html
+[scan] page 1/5: http://127.0.0.1:50357/
+[scan] page 9/12: http://127.0.0.1:63323/missing-page.html
+ [32m✓[39m tests/e2e/product.test.ts [2m([22m[2m5 tests[22m[2m)[22m[33m 27753[2mms[22m[39m
+   [32m✓[39m v0.2.0 product commands [2m(5)[22m
+     [33m[2m✓[22m[39m init writes a starter config, refuses overwrite, honors --force[33m 4067[2mms[22m[39m
+     [33m[2m✓[22m[39m doctor reports a ready environment with exit 0[33m 920[2mms[22m[39m
+     [33m[2m✓[22m[39m compare classifies new/resolved/persistent and honors --fail-on new[33m 1827[2mms[22m[39m
+     [33m[2m✓[22m[39m compare rejects non-ReproCase files with actionable guidance[33m 919[2mms[22m[39m
+     [33m[2m✓[22m[39m npm pack installs and runs from an isolated directory[33m 19827[2mms[22m[39m
+ [32m✓[39m tests/integration/components.test.ts [2m([22m[2m3 tests[22m[2m)[22m[33m 27505[2mms[22m[39m
+   [32m✓[39m component detection (shadow DOM + iframes) [2m(3)[22m
+     [33m[2m✓[22m[39m explores open shadow DOM with a working repro plan (verified 3/3)[33m 11697[2mms[22m[39m
+     [33m[2m✓[22m[39m same-origin iframe: fault attributed to the frame URL and verified by direct replay[33m 9606[2mms[22m[39m
+     [33m[2m✓[22m[39m cross-origin iframe: content suppressed, logged, never reported[33m 6185[2mms[22m[39m
+[scan] page 2/5: http://127.0.0.1:50357/app/view1
+ [32m✓[39m tests/integration/scope-and-explorer.test.ts [2m([22m[2m4 tests[22m[2m)[22m[33m 32905[2mms[22m[39m
+   [32m✓[39m audit regression: scan scope [2m(4)[22m
+     [33m[2m✓[22m[39m never visits a different app that shares only the loopback host (different port)[33m 8365[2mms[22m[39m
+     [33m[2m✓[22m[39m exercises buttons before header navigation links (no more drive-by leave)[33m 8146[2mms[22m[39m
+     [33m[2m✓[22m[39m attributes faults to the destination page after a button navigation (D5)[33m 7959[2mms[22m[39m
+     [33m[2m✓[22m[39m continues exploring after a same-document (SPA) transition and deep-links the final URL[33m 8398[2mms[22m[39m
+[scan] page 1/4: http://127.0.0.1:63323/clean.html
+[scan] page 2/4: http://127.0.0.1:63323/clean-2.html
+ [32m✓[39m tests/integration/scanner.test.ts [2m([22m[2m2 tests[22m[2m)[22m[33m 39718[2mms[22m[39m
+   [32m✓[39m Scanner against the demo site (real browser) [2m(2)[22m
+     [33m[2m✓[22m[39m detects all four planted faults from the index page and verifies each independently[33m 32768[2mms[22m[39m
+     [33m[2m✓[22m[39m reports zero findings on the clean control pages (no false positives)[33m 6931[2mms[22m[39m
+ [32m✓[39m tests/e2e/cli-ux.test.ts [2m([22m[2m6 tests[22m[2m)[22m[33m 42456[2mms[22m[39m
+   [32m✓[39m CLI failure handling and messages (v0.2.1 UX) [2m(6)[22m
+     [33m[2m✓[22m[39m unknown command prints the error and points at the help[33m 991[2mms[22m[39m
+     [33m[2m✓[22m[39m invalid config JSON fails with the file path and a fix hint[33m 885[2mms[22m[39m
+     [33m[2m✓[22m[39m unreachable entry exits 2 with actionable guidance[33m 5156[2mms[22m[39m
+     [33m[2m✓[22m[39m missing Chromium produces the exact fix command instead of a raw stack[33m 846[2mms[22m[39m
+     [33m[2m✓[22m[39m unwritable output location names the directory and the fix[33m 806[2mms[22m[39m
+     [33m[2m✓[22m[39m handles output paths with spaces and non-ASCII characters[33m 33588[2mms[22m[39m
+ [32m✓[39m tests/e2e/cli.test.ts [2m([22m[2m5 tests[22m[2m)[22m[33m 57832[2mms[22m[39m
+   [32m✓[39m CLI end-to-end [2m(5)[22m
+     [33m[2m✓[22m[39m scan: detects the four planted faults, exits 1 and writes the full report bundle[33m 33738[2mms[22m[39m
+     [33m[2m✓[22m[39m generated tests reproduce the faults through the real Playwright runner[33m 6758[2mms[22m[39m
+     [33m[2m✓[22m[39m scan: clean control entry exits 0 with zero findings[33m 7236[2mms[22m[39m
+     [33m[2m✓[22m[39m scan: unreachable entry exits 2 with an entryUnreachable marker[33m 2592[2mms[22m[39m
+     [33m[2m✓[22m[39m --version prints the package version[33m 500[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m19 passed[39m[22m[90m (19)[39m
+[2m      Tests [22m [1m[32m126 passed[39m[22m[90m (126)[39m
+[2m   Start at [22m 17:41:33
+[2m   Duration [22m 58.35s[2m (tests 98%, import 2%)[22m
+
