@@ -49,6 +49,7 @@ coverage warning, never a claimed fix.
 | `--max-pages <n>` | `25` | Maximum number of pages to visit |
 | `--depth <n>` | `3` | Maximum crawl depth from the entry page |
 | `--timeout <ms>` | `300000` | Overall run timeout |
+| `--detection-window-ms <ms>` | `1500` | Async observation window (higher catches later hydration faults, slower scan) |
 | `--fail-on <mode>` | `verified` | Exit 1 when `verified` or `suspected` findings exist, or `never` |
 | `--compare-with <file>` | — | Diff against a previous `result.json`; writes `compare.json` and embeds a "Changes vs previous scan" section in the HTML report |
 | `--no-screenshots` | — | Disable screenshot capture |

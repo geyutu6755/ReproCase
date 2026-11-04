@@ -79,6 +79,20 @@ my-report/
 **已解决** —— 覆盖率缩水时标记为*未确认*，绝不宣称已修复。输出 `compare.json`
 与自包含的 `compare.html`。
 
+## CI / GitHub Actions
+
+在每次 push 或 PR 上对你自己的站点运行 ReproCase——干净则通过、新增故障阻断构建、报告进入构建产物（上传前剥离 Trace）：
+
+~~~yaml
+- name: ReproCase scan
+  uses: geyutu6755/ReproCase/.github/actions/reprocase-scan@v0.5.0
+  with:
+    url: http://localhost:3000/
+    compare-with: .reprocase/baseline/result.json
+~~~
+
+完整输入、退出码语义与基线流程见 [docs/github-actions.md](docs/github-actions.md)。
+
 ## 常见问题与排查
 
 - **"Refusing to scan non-local host"** —— 仅允许扫描 localhost；扫描其他主机需写入
