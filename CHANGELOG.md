@@ -4,6 +4,46 @@ All notable changes to ReproCase are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.5.0] — 2026-11-05
+
+Developer-workflow integration release: run ReproCase in your own GitHub Actions pipelines,
+with honest exit-code semantics, baseline new-fault gating and privacy-stripped artifacts.
+
+### Added
+
+- **Composite action** `.github/actions/reprocase-scan`: runs a scan inside your job (same
+  runner, so localhost test servers work), installs a pinned ReproCase ref (clone → `npm ci`
+  → build → global install of the built package — global mode strips devDependencies, so
+  install-time building fails), publishes a privacy-stripped report artifact (traces deleted
+  before upload), and requires no secrets beyond artifact upload.
+- **Baseline new-faults gate**: `compare-with` a committed `result.json`; first runs without a
+  baseline skip the gate with a notice; coverage shrink marks resolutions *unconfirmed*; the
+  gate fails on NEW findings (`fail-on-new`, default true) — verified against a real external
+  repository ([reprocase-actions-demo](https://github.com/geyutu6755/reprocase-actions-demo)):
+  clean scan green, incident commit red (2 verified faults + gate "2 new findings"), fix
+  commit green.
+- **Honest environment errors**: scanner exit 2 (unreachable URL, bad config) is annotated as
+  an environment problem — never presented as a website verdict — and an external CI job
+  asserts this contract.
+- **`scan --detection-window-ms`**: CI-friendly async observation budget (verified end-to-end).
+- **Cluster-aware issue markdown**: the combined GitHub-issue document groups
+  js-exception/console-error findings by fault cluster with collapsed per-page member detail
+  (landed from the preserved v0.3.0 takeover patch, now with a dedicated 5-case test suite).
+- Package metadata: `bugs`/`homepage`; docs: GitHub Actions guide, architecture sections for
+  aggregation/observation/components/CI, npm publishing readiness.
+
+### Fixed
+
+- Composite action install strategy (global mode devDependencies).
+- Demo/CI pattern: background servers must be detached to survive workflow steps.
+
+### Verification
+
+137/137 tests (71 unit + 66 integration/e2e) incl. docs↔CLI consistency, CLI error-path UX,
+report UX browser audit, framework apps, observation window and components suites; four-OS CI
+matrix; external repository workflow verified on real GitHub runners (scan green, gated red,
+honest-error contract green); npm audit 0.
+
 ## [0.4.0] — 2026-11-02
 
 Lower the barrier to first install and adoption. No new detection rules and no UI
@@ -436,6 +476,11 @@ First verified release.
 - No accessibility, performance, or visual-regression coverage beyond horizontal overflow.
 - Single-browser (Chromium) at this stage; Firefox/WebKit untested.
 
+[0.5.0]: https://github.com/geyutu6755/ReproCase/releases/tag/v0.5.0
+[0.4.0]: https://github.com/geyutu6755/ReproCase/releases/tag/v0.4.0
+[0.3.3]: https://github.com/geyutu6755/ReproCase/releases/tag/v0.3.3
+[0.3.2]: https://github.com/geyutu6755/ReproCase/releases/tag/v0.3.2
+[0.3.1]: https://github.com/geyutu6755/ReproCase/releases/tag/v0.3.1
 [0.3.0]: https://github.com/geyutu6755/ReproCase/releases/tag/v0.3.0
 [0.2.2]: https://github.com/geyutu6755/ReproCase/releases/tag/v0.2.2
 [0.2.1]: https://github.com/geyutu6755/ReproCase/releases/tag/v0.2.1

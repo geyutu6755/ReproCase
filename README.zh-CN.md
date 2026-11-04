@@ -139,7 +139,7 @@ npm run test:all   # 单元 + 集成（真实浏览器）+ CLI 端到端
 
 ## 状态
 
-v0.4.0 —— 面向"降低安装与首次使用门槛"的发布：一步式源码安装（新增 `prepare` 自动构建 `dist/`，`npm i -g github:…#tag` 现可正常使用，快速上手机械去掉手动 `npm run build`）；统一 Node 基线为 **22+**（Node 18/20 已 EOL，CI 覆盖 22 与 24）；修复已废弃的 Vitest `poolOptions` 配置；并更新为真实截图。检测能力与 v0.3.x 保持一致——跨页面故障聚类、自适应异步观测、开放 Shadow DOM 与同源 iframe 检测、`scan --compare-with`，以及 v0.3.2–v0.3.3 的报告/附件安全加固。详见
+v0.5.0 —— 开发者工作流集成版本（复合 GitHub Action、基线新增故障门禁、诚实的 CI 退出语义、聚类感知 Issue 文档）。详见 [变更日志](CHANGELOG.md) 与 [Actions 指南](docs/github-actions.md)。
 [变更日志](CHANGELOG.md)、[测试基线](docs/test-baselines.md) 与[兼容性矩阵](docs/compatibility.md)。
 
 ## 许可证
