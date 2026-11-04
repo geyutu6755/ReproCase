@@ -78,6 +78,64 @@ describe('issue markdown reporter', () => {
     expect(md).toContain('No findings');
   });
 
+  describe('cluster-aware issue markdown', () => {
+    const STACK = 'Error: Boom: shared\n    at save (http://127.0.0.1:4640/app.js:1:1)';
+    const members = [
+      makeFinding({ url: 'http://127.0.0.1:4640/a.html', evidence: { message: 'Boom: shared', stack: STACK } }),
+      makeFinding({ url: 'http://127.0.0.1:4640/b.html', evidence: { message: 'Boom: shared', stack: STACK } }),
+      makeFinding({
+        type: 'resource-load-failure',
+        severity: 'medium',
+        title: 'First-party resource failed to load: http://127.0.0.1:4640/one.png (HTTP 404)',
+        url: 'http://127.0.0.1:4640/one-page.html',
+        evidence: { resourceUrl: 'http://127.0.0.1:4640/one.png', statusCode: 404 },
+        steps: []
+      })
+    ];
+
+    function clusteredResult(): ScanResult {
+      const findings = members.map((m, i) => ({ ...m, id: 'fp-test' + String(i).padStart(2, '0') }));
+      return makeResult({ findings, clusters: aggregateFindings(findings) });
+    }
+
+    it('groups exception findings by cluster with collapsed per-page detail', () => {
+      const md = renderIssuesMarkdown(clusteredResult());
+      expect((md.match(/fault cluster,/g) || []).length).toBe(1);
+      expect(md).toContain('Affected pages:');
+      expect(md).toContain('<details>');
+      expect(md).toContain('</details>');
+      expect(md).toContain('http://127.0.0.1:4640/a.html');
+      expect(md).toContain('http://127.0.0.1:4640/b.html');
+    });
+
+    it('keeps non-clusterable finding types standalone', () => {
+      const md = renderIssuesMarkdown(clusteredResult());
+      expect(md).toContain('First-party resource failed to load');
+      expect(md).toContain('## [MEDIUM] [verified] First-party resource');
+    });
+
+    it('renders every finding id exactly once (traceability, no duplication)', () => {
+      const md = renderIssuesMarkdown(clusteredResult());
+      for (const item of clusteredResult().findings) {
+        const count = md.split('`' + item.id + '`').length - 1;
+        expect(count, 'finding ' + item.id + ' must appear exactly once').toBe(1);
+      }
+    });
+
+    it('aggregates repro numbers and lists the cluster id', () => {
+      const md = renderIssuesMarkdown(clusteredResult());
+      expect(md).toContain('Cluster ID:');
+      expect(md).toContain('6/6 member-verification attempts');
+    });
+
+    it('renders findings without clusters exactly as before (back-compat)', () => {
+      const plain = makeResult({ findings: [makeFinding({ title: 'solo fault', evidence: { message: 'boom' } })], clusters: [] });
+      const md = renderIssuesMarkdown(plain);
+      expect(md).toContain('## [HIGH] [verified] solo fault');
+      expect(md).not.toContain('fault cluster,');
+    });
+  });
+
   it('renderSingleIssue produces a standalone document per finding', () => {
     const r = makeResult();
     const single = renderSingleIssue(r.findings[0], r);
