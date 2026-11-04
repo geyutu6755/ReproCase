@@ -1,0 +1,14 @@
+2026-11-01T10:36:37.821Z CI run#41298227241 in_progress -
+2026-11-01T10:36:53.481Z CI run#41298227241 in_progress -
+2026-11-01T10:37:09.229Z CI run#41298227241 in_progress -
+2026-11-01T10:37:24.982Z CI run#41298227241 in_progress -
+2026-11-01T10:37:40.701Z CI run#41298227241 in_progress -
+2026-11-01T10:37:56.855Z CI run#41298227241 in_progress -
+2026-11-01T10:38:12.896Z CI run#41298227241 in_progress -
+2026-11-01T10:38:31.854Z CI run#41298227241 in_progress -
+2026-11-01T10:38:47.881Z CI run#41298227241 completed success
+=== JOBS ===
+Test (windows-latest, Node 22) => success
+Test (macos-latest, Node 22) => success
+Test (ubuntu-latest, Node 22) => success
+Test (ubuntu-latest, Node 20) => success
