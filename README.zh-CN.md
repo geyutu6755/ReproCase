@@ -139,7 +139,7 @@ npm run test:all   # 单元 + 集成（真实浏览器）+ CLI 端到端
 
 ## 状态
 
-v0.5.0 —— 开发者工作流集成版本（复合 GitHub Action、基线新增故障门禁、诚实的 CI 退出语义、聚类感知 Issue 文档）。详见 [变更日志](CHANGELOG.md) 与 [Actions 指南](docs/github-actions.md)。
+v0.5.1 —— GitHub Actions 可靠性修复版本（fail-on-new 语义、退出码顺序、SHA 支持、npm ci）。详见 [变更日志](CHANGELOG.md)。
 [变更日志](CHANGELOG.md)、[测试基线](docs/test-baselines.md) 与[兼容性矩阵](docs/compatibility.md)。
 
 ## 许可证

@@ -56,7 +56,7 @@ Pin the action to a released tag (`@v0.5.0`) or a commit SHA for supply-chain sa
 | `config` | — | Path to a `reprocase.config.json` in your repo (overrides URL budgets). |
 | `compare-with` | — | Path to a baseline `result.json` — enables the new-findings gate. |
 | `fail-on` | `verified` | `verified` / `suspected` / `never` — which findings fail the step. |
-| `fail-on-new` | `true` | With `compare-with`: fail when new findings exist vs the baseline. |
+| `fail-on-new` | `true` | With `compare-with`: `true` fails on new findings vs baseline; `false` reports the diff without gating. Scan findings still gate via `fail-on`. |
 | `max-pages` | scanner default (25) | Crawl budget. |
 | `detection-window-ms` | scanner default (1500) | Async observation window (higher = catches later hydration faults). |
 | `report-name` | `reprocase-report` | Artifact name. |
@@ -74,8 +74,8 @@ Pin the action to a released tag (`@v0.5.0`) or a commit SHA for supply-chain sa
 
 | Code | Meaning | CI effect |
 | --- | --- | --- |
-| `0` | Scan completed, nothing at/above the threshold | step passes |
-| `1` | Scan completed — findings at/above the threshold (a **verdict about your website**) | step fails, report artifact is still published |
+| `0` | Clean scan + no new findings vs baseline | step passes |
+| `1` | Findings at/above threshold (a **verdict about your site**) OR new findings vs baseline (a **quality gate**) | step fails, report artifact is still published |
 | `2` | ReproCase could not run properly (bad config, unreachable URL, missing browser) | step fails with a `::error::` annotation stating this is an **environment problem, not a website verdict** |
 
 An environment error never masquerades as "your site is fine" — the action fails loudly and
@@ -103,6 +103,12 @@ Behaviour:
   cannot prove.
 - **Update the baseline deliberately**: after accepting a scan, copy its
   `result.json` into `.reprocase/baseline/` in a reviewed commit.
+- **fail-on-new=false**: the compare report is generated and the new/resolved/persistent
+  counts are visible in the output and the report, but the action does not gate on new
+  findings. Scan findings still gate via `fail-on`.
+- **fail-on never + compare-with**: the scan never gates on findings, but the baseline
+  gate can still fail on new findings. Useful for report-only runs that still want
+  regression detection.
 
 ## Pull requests
 
