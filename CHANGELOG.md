@@ -4,6 +4,32 @@ All notable changes to ReproCase are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.5.1] — 2026-11-06
+
+GitHub Actions composite-action reliability release. Three real defects found by the
+external-repo CI runs and code audit.
+
+### Fixed
+
+- fail-on-new input was declared but its env var never read (P1): the gate always used
+  the new-findings gate regardless of the user setting. Now: true gates on new findings;
+  false reports the diff without gating; invalid values produce an explicit error.
+- Scan step exited 1, causing GitHub Actions to skip the gate step (P1): the scan step
+  now completes on exit 0 or 1 (recording the verdict) and only exits 2 for environment
+  errors. A new Final CI decision step evaluates scan verdict + gate conclusion in priority
+  order (error > gate > findings > clean) and produces the final exit code.
+- reprocase-ref SHA support was claimed but not implemented (P2): git clone --branch
+  only works for tags/branches. Now: --branch first, then fallback to full clone + git
+  checkout for SHAs, with an explicit error for unresolvable refs. The checked-out commit
+  is verified and reported.
+- npm install to npm ci for lockfile-reproducible installs; hashFiles guard prevents
+  empty artifact upload.
+
+### Verification
+
+160/160 tests; npm audit 0; external repo validation (clean green, incident red, fix green,
+honest-error green); four-OS CI matrix.
+
 ## [0.5.0] — 2026-11-05
 
 Developer-workflow integration release: run ReproCase in your own GitHub Actions pipelines,
