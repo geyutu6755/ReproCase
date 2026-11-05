@@ -152,7 +152,7 @@ fault through the real Playwright runner.
 
 ## Status
 
-v0.5.0 — developer-workflow integration release (composite GitHub Action, baseline new-fault gating, honest CI exit semantics, cluster-aware issue markdown). See the [changelog](CHANGELOG.md), the [Actions guide](docs/github-actions.md) and the [compatibility matrix](docs/compatibility.md).
+v0.5.1 — GitHub Actions reliability release (fail-on-new semantics, exit-code ordering, SHA support, npm ci). See the [changelog](CHANGELOG.md).
 `npm i -g github:…#tag` now works and the quick start drops the manual build), a reconciled
 Node baseline (**22+**, since Node 18/20 are End-of-Life; CI-tested on 22 & 24), the deprecated
 Vitest `poolOptions` config fixed, and refreshed real screenshots. Detection itself is unchanged

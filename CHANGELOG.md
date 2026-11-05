@@ -476,6 +476,7 @@ First verified release.
 - No accessibility, performance, or visual-regression coverage beyond horizontal overflow.
 - Single-browser (Chromium) at this stage; Firefox/WebKit untested.
 
+[0.5.1]: https://github.com/geyutu6755/ReproCase/releases/tag/v0.5.1
 [0.5.0]: https://github.com/geyutu6755/ReproCase/releases/tag/v0.5.0
 [0.4.0]: https://github.com/geyutu6755/ReproCase/releases/tag/v0.4.0
 [0.3.3]: https://github.com/geyutu6755/ReproCase/releases/tag/v0.3.3
