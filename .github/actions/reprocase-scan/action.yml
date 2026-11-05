@@ -12,7 +12,7 @@ inputs:
     description: 'Entry URL to scan (e.g. http://localhost:3000/ — start your site in an earlier step).'
     required: true
   reprocase-ref:
-    description: 'ReproCase version to install (tag, branch or commit). Defaults to the ref this action was pinned to.'
+    description: 'ReproCase version to install: a tag (v0.5.1), a branch (main), or a full commit SHA. Defaults to the ref this action was pinned to.'
     required: false
     default: ''
   config:
@@ -24,11 +24,11 @@ inputs:
     required: false
     default: ''
   fail-on:
-    description: 'Exit 1 when "verified" or "suspected" findings exist, or "never" (report only).'
+    description: 'Exit 1 when "verified" or "suspected" findings exist, or "never" (report only). Does NOT affect the baseline gate — see fail-on-new.'
     required: false
     default: 'verified'
   fail-on-new:
-    description: 'When compare-with is set: exit 1 if any NEW findings exist. Default true.'
+    description: 'When compare-with is set: "true" (default) fails the action if new findings exist vs baseline; "false" reports the diff but does not gate on new findings.'
     required: false
     default: 'true'
   max-pages:
@@ -53,8 +53,11 @@ outputs:
     description: 'clean (exit 0) | findings (exit 1) | error (exit 2)'
     value: ${{ steps.scan.outputs.verdict }}
   exit-code:
-    description: 'Raw scanner exit code (0/1/2).'
-    value: ${{ steps.scan.outputs.exit-code }}
+    description: 'Final action exit code (0/1/2).'
+    value: ${{ steps.decision.outputs.exit-code }}
+  scan-exit-code:
+    description: 'Raw scanner exit code before gating.'
+    value: ${{ steps.scan.outputs.scan-exit-code }}
   new-findings:
     description: 'Number of new findings vs the baseline (empty when no baseline was given).'
     value: ${{ steps.gate.outputs.new-findings }}
@@ -67,24 +70,45 @@ runs:
         node-version: ${{ inputs.node-version }}
 
     - name: Install ReproCase
+      id: install
       shell: bash
       env:
         REPROCASE_REF: ${{ inputs.reprocase-ref || github.action_ref }}
       run: |
         set -euo pipefail
         REF="${REPROCASE_REF}"
-        case "$REF" in
-          ''|refs/*) REF="v0.5.0" ;;
-        esac
+        # Strip leading "refs/" so the composite action's own ref value works.
+        case "$REF" in refs/*) REF="${REF#refs/}";; esac
+        # Default: a known-good release tag (never silently fall back to
+        # another ref when the user explicitly provided one that doesn't exist).
+        if [ -z "$REF" ]; then REF="v0.5.1"; fi
         SRC="${RUNNER_TEMP}/reprocase-src"
         rm -rf "$SRC"
         echo "Installing ReproCase from github.com/geyutu6755/ReproCase ($REF)"
-        git clone --depth 1 --branch "$REF" https://github.com/geyutu6755/ReproCase.git "$SRC"
+        # Try tag/branch first via --branch; fall back to SHA via raw checkout.
+        if git clone --depth 1 --branch "$REF" https://github.com/geyutu6755/ReproCase.git "$SRC" 2>/dev/null; then
+          echo "Cloned tag/branch: $REF"
+        else
+          echo "--branch clone failed; trying SHA checkout"
+          git clone https://github.com/geyutu6755/ReproCase.git "$SRC"
+          cd "$SRC"
+          if git cat-file -e "$REF^{commit}" 2>/dev/null; then
+            git checkout "$REF"
+            echo "Checked out SHA: $(git rev-parse HEAD)"
+          else
+            echo "::error::ReproCase ref '$REF' not found as a tag, branch or commit SHA in geyutu6755/ReproCase. Available tags: https://github.com/geyutu6755/ReproCase/tags"
+            exit 1
+          fi
+        fi
         cd "$SRC"
+        ACTUAL=$(git rev-parse HEAD)
+        echo "reprocase-commit=$ACTUAL" >> "$GITHUB_OUTPUT"
+        echo "Checked out: $ACTUAL"
         # Global installs omit devDependencies, and the TypeScript build needs
-        # them — so build here (npm ci includes dev deps) and install the
-        # built package globally.
-        npm install --no-fund --no-audit
+        # them — so build here (npm ci uses the lockfile for reproducibility)
+        # and install the built package globally. The prepare script runs
+        # after dist/ already exists, so it's a no-op at that point.
+        npm ci --no-fund --no-audit
         npm run build
         npm install -g --no-fund --no-audit .
         reprocase --version
@@ -115,7 +139,7 @@ runs:
         reprocase "${ARGS[@]}"
         CODE=$?
         set -e
-        echo "exit-code=$CODE" >> "$GITHUB_OUTPUT"
+        echo "scan-exit-code=$CODE" >> "$GITHUB_OUTPUT"
         case "$CODE" in
           0)
             echo "verdict=clean" >> "$GITHUB_OUTPUT"
@@ -124,27 +148,41 @@ runs:
           1)
             echo "verdict=findings" >> "$GITHUB_OUTPUT"
             echo "ReproCase: scan completed — findings exist at or above the threshold."
+            # Do NOT exit 1 here: the gate step needs to run to compare against
+            # the baseline. The final decision step handles the exit code.
             ;;
           2)
             echo "verdict=error" >> "$GITHUB_OUTPUT"
             echo "::error::ReproCase could not run properly (exit 2). This is an environment or configuration problem, NOT a verdict about your website. See the log above; 'reprocase doctor' diagnoses most causes."
+            exit 2
             ;;
           *)
             echo "verdict=error" >> "$GITHUB_OUTPUT"
             echo "::error::ReproCase exited unexpectedly (code $CODE)."
+            exit 1
             ;;
         esac
-        exit "$CODE"
 
     - name: Compare with baseline (new-fault gate)
       id: gate
-      if: ${{ inputs.compare-with != '' }}
+      if: ${{ inputs.compare-with != '' && steps.scan.outputs.verdict != 'error' }}
       shell: bash
       env:
         BASELINE: ${{ inputs.compare-with }}
-        FAIL_ON_NEW: ${{ inputs.fail-on-new }}
+        FAIL_ON_NEW_RAW: ${{ inputs.fail-on-new }}
       run: |
         set -uo pipefail
+        # Normalise fail-on-new: case-insensitive, trim whitespace.
+        FAIL_ON_NEW=$(echo "$FAIL_ON_NEW_RAW" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')
+        case "$FAIL_ON_NEW" in
+          true|'')  GATE_FLAG="--fail-on new" ;;
+          false)    GATE_FLAG="" ;;
+          *)
+            echo "::error::Invalid fail-on-new value '$FAIL_ON_NEW_RAW'. Use 'true' or 'false'."
+            exit 1
+            ;;
+        esac
+        echo "fail-on-new-normalised=$FAIL_ON_NEW" >> "$GITHUB_OUTPUT"
         if [ ! -f "$BASELINE" ]; then
           echo "::notice::Baseline '$BASELINE' not found — first run on this branch? Skipping the new-findings gate; this scan becomes the new baseline candidate."
           echo "new-findings=" >> "$GITHUB_OUTPUT"
@@ -154,7 +192,8 @@ runs:
           echo "::error::Scan produced no result.json — the scan may have failed before writing results. Cannot compare."
           exit 1
         fi
-        GATE_ARGS=(compare "$BASELINE" reprocase-report/result.json --out reprocase-report/compare --fail-on new)
+        GATE_ARGS=(compare "$BASELINE" reprocase-report/result.json --out reprocase-report/compare)
+        [ -n "$GATE_FLAG" ] && GATE_ARGS+=("$GATE_FLAG")
         set +e
         reprocase "${GATE_ARGS[@]}"
         CODE=$?
@@ -162,10 +201,68 @@ runs:
         NEW=$(node -e "const r=require('./reprocase-report/compare/compare.json');console.log(r.summary.newCount)" 2>/dev/null || echo 0)
         echo "new-findings=$NEW" >> "$GITHUB_OUTPUT"
         case "$CODE" in
-          0) echo "ReproCase compare: no new findings." ;;
-          1) echo "::error::ReproCase compare: $NEW new finding(s) vs baseline (coverage shrank = unconfirmed, see report)." ; exit 1 ;;
-          2) echo "::error::ReproCase compare failed to run (bad baseline file?). Fix the baseline or remove compare-with." ; exit 1 ;;
+          0)
+            echo "ReproCase compare: no new findings (gate passed)."
+            ;;
+          1)
+            if [ "$FAIL_ON_NEW" = "true" ]; then
+              echo "::error::ReproCase compare: $NEW new finding(s) vs baseline. Gate: FAIL (fail-on-new=true)."
+              exit 1
+            else
+              echo "::warning::ReproCase compare: $NEW new finding(s) vs baseline. Gate: PASS (fail-on-new=false — report only)."
+            fi
+            ;;
+          2)
+            echo "::error::ReproCase compare failed to run (bad baseline file?). Fix the baseline or remove compare-with."
+            exit 1
+            ;;
         esac
+
+    - name: Final CI decision
+      id: decision
+      if: ${{ always() }}
+      shell: bash
+      env:
+        SCAN_VERDICT: ${{ steps.scan.outputs.verdict }}
+        SCAN_EXIT: ${{ steps.scan.outputs.scan-exit-code }}
+        GATE_CONCLUSION: ${{ steps.gate.conclusion }}
+        INSTALL_CONCLUSION: ${{ steps.install.conclusion }}
+        FAIL_ON_NEW_RAW: ${{ inputs.fail-on-new }}
+        HAS_COMPARE: ${{ inputs.compare-with != '' }}
+      run: |
+        set -uo pipefail
+        # Propagate the gate's new-findings output.
+        NEW="${{ steps.gate.outputs.new-findings }}"
+        echo "new-findings=$NEW" >> "$GITHUB_OUTPUT"
+
+        FAIL_ON_NEW=$(echo "$FAIL_ON_NEW_RAW" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')
+
+        # Priority 1: installation or scan environment error (exit 2).
+        if [ "$INSTALL_CONCLUSION" = "failure" ] || [ "$SCAN_VERDICT" = "error" ]; then
+          echo "exit-code=2" >> "$GITHUB_OUTPUT"
+          echo "Final verdict: error (environment/configuration problem)."
+          exit 2
+        fi
+
+        # Priority 2: baseline gate failed (new findings with fail-on-new=true,
+        # or compare infrastructure error).
+        if [ "$HAS_COMPARE" = "true" ] && [ "$GATE_CONCLUSION" = "failure" ]; then
+          echo "exit-code=1" >> "$GITHUB_OUTPUT"
+          echo "Final verdict: gate failed (new findings vs baseline)."
+          exit 1
+        fi
+
+        # Priority 3: scan findings at or above the fail-on threshold.
+        if [ "$SCAN_VERDICT" = "findings" ]; then
+          echo "exit-code=1" >> "$GITHUB_OUTPUT"
+          echo "Final verdict: findings exist (scan exit $SCAN_EXIT)."
+          exit 1
+        fi
+
+        # Priority 4: all checks passed.
+        echo "exit-code=0" >> "$GITHUB_OUTPUT"
+        echo "Final verdict: clean."
+        exit 0
 
     - name: Publish privacy-stripped report
       if: ${{ always() }}
@@ -176,11 +273,13 @@ runs:
         # evidence, never uploaded. Screenshots are of YOUR site: keep them,
         # they belong to you. result.json / report.html / issues.md are
         # redacted at source (token/session query params).
-        rm -rf reprocase-report/artifacts/traces
-        ls reprocase-report
+        if [ -d reprocase-report ]; then
+          rm -rf reprocase-report/artifacts/traces
+          ls reprocase-report
+        fi
 
     - uses: actions/upload-artifact@v4
-      if: ${{ always() }}
+      if: ${{ always() && hashFiles('reprocase-report/**') != '' }}
       with:
         name: ${{ inputs.report-name }}
         path: reprocase-report/
