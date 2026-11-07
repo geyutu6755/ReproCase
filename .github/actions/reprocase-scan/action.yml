@@ -1,8 +1,9 @@
 name: 'ReproCase scan'
 description: >
   Run a ReproCase website scan inside this job (same runner, so localhost test
-  servers work), publish a privacy-stripped report artifact, and optionally gate
-  on new findings by comparing against a committed baseline result.json.
+  servers work), publish a privacy-stripped report artifact and a workflow
+  summary, and optionally gate on new findings by comparing against a
+  committed baseline result.json.
 branding:
   icon: 'search'
   color: 'blue'
@@ -61,6 +62,9 @@ outputs:
   new-findings:
     description: 'Number of new findings vs the baseline (empty when no baseline was given).'
     value: ${{ steps.gate.outputs.new-findings }}
+  reprocase-commit:
+    description: 'Commit SHA of the installed ReproCase version.'
+    value: ${{ steps.install.outputs.reprocase-commit }}
 
 runs:
   using: 'composite'
@@ -73,51 +77,89 @@ runs:
       id: install
       shell: bash
       env:
-        REPROCASE_REF: ${{ inputs.reprocase-ref || github.action_ref }}
+        REPROCASE_REF: ${{ inputs.reprocase-ref }}
+        ACTION_REF: ${{ github.action_ref }}
       run: |
         set -euo pipefail
-        REF="${REPROCASE_REF}"
-        # Strip leading "refs/" so the composite action's own ref value works.
-        case "$REF" in refs/*) REF="${REF#refs/}";; esac
-        # Default: a known-good release tag (never silently fall back to
-        # another ref when the user explicitly provided one that doesn't exist).
+        # ── Ref normalisation ────────────────────────────────────────────────
+        # GitHub may provide any of these formats for action_ref or user input:
+        #   refs/tags/v0.5.1, refs/heads/main, v0.5.1, main, <40-char SHA>
+        # We must normalise to what git clone --branch / git checkout accepts.
+        REF="${REPROCASE_REF:-$ACTION_REF}"
+        # Trim whitespace and reject empty after trim.
+        REF=$(echo "$REF" | tr -d '[:space:]')
+        if [ -z "$REF" ]; then
+          echo "::error::reprocase-ref is empty. Set it to a tag (e.g. v0.5.1), branch (e.g. main), or full commit SHA."
+          exit 1
+        fi
+        # Security: reject refs containing shell metacharacters or path traversal.
+        if echo "$REF" | grep -qP '[;&|`$(){}!\[\]<>\\]'; then
+          echo "::error::reprocase-ref contains unsafe characters: '$REF'. Use a plain tag, branch name, or commit SHA."
+          exit 1
+        fi
+        if echo "$REF" | grep -q '\.\.'; then
+          echo "::error::reprocase-ref contains path traversal ('..'): '$REF'."
+          exit 1
+        fi
+        # Normalise known GitHub ref formats to bare tag/branch names.
+        case "$REF" in
+          refs/tags/*)   REF="${REF#refs/tags/}" ;;
+          refs/heads/*)  REF="${REF#refs/heads/}" ;;
+          refs/*)        REF="${REF#refs/}" ;;
+        esac
+        # If still empty after normalisation, use a known-good default.
         if [ -z "$REF" ]; then REF="v0.5.1"; fi
+        # If it's a 40-char hex string, treat it as a SHA.
+        IS_SHA=false
+        if echo "$REF" | grep -qP '^[0-9a-f]{40}$'; then IS_SHA=true; fi
+        # ── Clone & checkout ─────────────────────────────────────────────────
         SRC="${RUNNER_TEMP}/reprocase-src"
         rm -rf "$SRC"
-        echo "Installing ReproCase from github.com/geyutu6755/ReproCase ($REF)"
-        # Try tag/branch first via --branch; fall back to SHA via raw checkout.
-        if git clone --depth 1 --branch "$REF" https://github.com/geyutu6755/ReproCase.git "$SRC" 2>/dev/null; then
-          echo "Cloned tag/branch: $REF"
-        else
-          echo "--branch clone failed; trying SHA checkout"
-          git clone https://github.com/geyutu6755/ReproCase.git "$SRC"
+        echo "Installing ReproCase from github.com/geyutu6755/ReproCase (ref: $REF, SHA mode: $IS_SHA)"
+        if [ "$IS_SHA" = "true" ]; then
+          # SHA refs require a full clone (cannot use --branch).
+          if ! git clone https://github.com/geyutu6755/ReproCase.git "$SRC" 2>/dev/null; then
+            echo "::error::Failed to clone geyutu6755/ReproCase for SHA checkout."
+            exit 1
+          fi
           cd "$SRC"
-          if git cat-file -e "$REF^{commit}" 2>/dev/null; then
-            git checkout "$REF"
-            echo "Checked out SHA: $(git rev-parse HEAD)"
+          if ! git cat-file -e "$REF^{commit}" 2>/dev/null; then
+            echo "::error::Commit SHA '$REF' not found in geyutu6755/ReproCase."
+            exit 1
+          fi
+          git checkout "$REF"
+        else
+          # Tag or branch: shallow clone with --branch.
+          if git clone --depth 1 --branch "$REF" https://github.com/geyutu6755/ReproCase.git "$SRC" 2>/dev/null; then
+            echo "Cloned tag/branch: $REF"
           else
-            echo "::error::ReproCase ref '$REF' not found as a tag, branch or commit SHA in geyutu6755/ReproCase. Available tags: https://github.com/geyutu6755/ReproCase/tags"
+            echo "::error::ReproCase ref '$REF' not found as a tag or branch in geyutu6755/ReproCase. Available tags: https://github.com/geyutu6755/ReproCase/tags"
             exit 1
           fi
         fi
         cd "$SRC"
         ACTUAL=$(git rev-parse HEAD)
         echo "reprocase-commit=$ACTUAL" >> "$GITHUB_OUTPUT"
-        echo "Checked out: $ACTUAL"
-        # Global installs omit devDependencies, and the TypeScript build needs
-        # them — so build here (npm ci uses the lockfile for reproducibility)
-        # and install the built package globally. The prepare script runs
-        # after dist/ already exists, so it's a no-op at that point.
+        echo "reprocase-ref-resolved=$REF" >> "$GITHUB_OUTPUT"
+        echo "Checked out commit: $ACTUAL (requested ref: $REF)"
+        # Verify the checkout matches the requested ref (for tags, the tag
+        # may point to an annotated commit; for SHAs, it must match exactly).
+        if [ "$IS_SHA" = "true" ] && [ "$ACTUAL" != "$REF" ]; then
+          echo "::error::Checked out commit $ACTUAL does not match requested SHA $REF."
+          exit 1
+        fi
+        # ── Build & install ──────────────────────────────────────────────────
         npm ci --no-fund --no-audit
         npm run build
         npm install -g --no-fund --no-audit .
-        reprocase --version
+        INSTALLED_VERSION=$(reprocase --version)
+        echo "reprocase-version=$INSTALLED_VERSION" >> "$GITHUB_OUTPUT"
+        echo "Installed ReproCase v$INSTALLED_VERSION (commit $ACTUAL)"
 
     - name: Install Chromium
       shell: bash
       run: |
         set -euo pipefail
-        # Idempotent: cached installs complete in seconds.
         npx playwright install chromium
 
     - name: Run scan
@@ -148,8 +190,6 @@ runs:
           1)
             echo "verdict=findings" >> "$GITHUB_OUTPUT"
             echo "ReproCase: scan completed — findings exist at or above the threshold."
-            # Do NOT exit 1 here: the gate step needs to run to compare against
-            # the baseline. The final decision step handles the exit code.
             ;;
           2)
             echo "verdict=error" >> "$GITHUB_OUTPUT"
@@ -172,7 +212,6 @@ runs:
         FAIL_ON_NEW_RAW: ${{ inputs.fail-on-new }}
       run: |
         set -uo pipefail
-        # Normalise fail-on-new: case-insensitive, trim whitespace.
         FAIL_ON_NEW=$(echo "$FAIL_ON_NEW_RAW" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')
         case "$FAIL_ON_NEW" in
           true|'')  GATE_FLAG="--fail-on new" ;;
@@ -201,21 +240,17 @@ runs:
         NEW=$(node -e "const r=require('./reprocase-report/compare/compare.json');console.log(r.summary.newCount)" 2>/dev/null || echo 0)
         echo "new-findings=$NEW" >> "$GITHUB_OUTPUT"
         case "$CODE" in
-          0)
-            echo "ReproCase compare: no new findings (gate passed)."
-            ;;
+          0) echo "ReproCase compare: no new findings (gate passed)." ;;
           1)
             if [ "$FAIL_ON_NEW" = "true" ]; then
               echo "::error::ReproCase compare: $NEW new finding(s) vs baseline. Gate: FAIL (fail-on-new=true)."
               exit 1
             else
               echo "::warning::ReproCase compare: $NEW new finding(s) vs baseline. Gate: PASS (fail-on-new=false — report only)."
-            fi
-            ;;
+            fi ;;
           2)
             echo "::error::ReproCase compare failed to run (bad baseline file?). Fix the baseline or remove compare-with."
-            exit 1
-            ;;
+            exit 1 ;;
         esac
 
     - name: Final CI decision
@@ -227,15 +262,11 @@ runs:
         SCAN_EXIT: ${{ steps.scan.outputs.scan-exit-code }}
         GATE_CONCLUSION: ${{ steps.gate.conclusion }}
         INSTALL_CONCLUSION: ${{ steps.install.conclusion }}
-        FAIL_ON_NEW_RAW: ${{ inputs.fail-on-new }}
         HAS_COMPARE: ${{ inputs.compare-with != '' }}
       run: |
         set -uo pipefail
-        # Propagate the gate's new-findings output.
         NEW="${{ steps.gate.outputs.new-findings }}"
         echo "new-findings=$NEW" >> "$GITHUB_OUTPUT"
-
-        FAIL_ON_NEW=$(echo "$FAIL_ON_NEW_RAW" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')
 
         # Priority 1: installation or scan environment error (exit 2).
         if [ "$INSTALL_CONCLUSION" = "failure" ] || [ "$SCAN_VERDICT" = "error" ]; then
@@ -243,36 +274,168 @@ runs:
           echo "Final verdict: error (environment/configuration problem)."
           exit 2
         fi
-
-        # Priority 2: baseline gate failed (new findings with fail-on-new=true,
-        # or compare infrastructure error).
+        # Priority 2: baseline gate failed.
         if [ "$HAS_COMPARE" = "true" ] && [ "$GATE_CONCLUSION" = "failure" ]; then
           echo "exit-code=1" >> "$GITHUB_OUTPUT"
           echo "Final verdict: gate failed (new findings vs baseline)."
           exit 1
         fi
-
         # Priority 3: scan findings at or above the fail-on threshold.
         if [ "$SCAN_VERDICT" = "findings" ]; then
           echo "exit-code=1" >> "$GITHUB_OUTPUT"
           echo "Final verdict: findings exist (scan exit $SCAN_EXIT)."
           exit 1
         fi
-
         # Priority 4: all checks passed.
         echo "exit-code=0" >> "$GITHUB_OUTPUT"
         echo "Final verdict: clean."
         exit 0
+
+    - name: Generate Job Summary
+      id: summary
+      if: ${{ always() }}
+      shell: bash
+      env:
+        SCAN_VERDICT: ${{ steps.scan.outputs.verdict }}
+        SCAN_EXIT: ${{ steps.scan.outputs.scan-exit-code }}
+        INSTALL_CONCLUSION: ${{ steps.install.conclusion }}
+        HAS_COMPARE: ${{ inputs.compare-with != '' }}
+        REPROCASE_REF_RESOLVED: ${{ steps.install.outputs.reprocase-ref-resolved }}
+        REPROCASE_COMMIT: ${{ steps.install.outputs.reprocase-commit }}
+        REPROCASE_VERSION: ${{ steps.install.outputs.reprocase-version }}
+      run: |
+        set -uo pipefail
+        SUMMARY="$GITHUB_STEP_SUMMARY"
+        # Safe header — static content, no user-controlled data.
+        echo "## 🔍 ReproCase Scan Report" > "$SUMMARY"
+        echo "" >> "$SUMMARY"
+        if [ "$INSTALL_CONCLUSION" = "failure" ]; then
+          echo "> ⛔ **Installation failed** — ReproCase could not be installed. Check the logs for details." >> "$SUMMARY"
+          exit 0
+        fi
+        echo "| | |" >> "$SUMMARY"
+        echo "|---|---|" >> "$SUMMARY"
+        echo "| **Target** | \`${{ inputs.url }}\` |" >> "$SUMMARY"
+        echo "| **ReproCase version** | $REPROCASE_VERSION (ref: \`$REPROCASE_REF_RESOLVED\`, commit: \`$REPROCASE_COMMIT\`) |" >> "$SUMMARY"
+        echo "| **Fail-on threshold** | \`${{ inputs.fail-on }}\` |" >> "$SUMMARY"
+        echo "| **Baseline** | ${{ inputs.compare-with || 'none' }} |" >> "$SUMMARY"
+        echo "" >> "$SUMMARY"
+        # Verdict line
+        case "$SCAN_VERDICT" in
+          clean)    echo "### ✅ Verdict: clean" >> "$SUMMARY" ;;
+          findings) echo "### ⚠️ Verdict: findings detected" >> "$SUMMARY" ;;
+          error)    echo "### ⛔ Verdict: scanner error" >> "$SUMMARY" ;;
+          *)        echo "### ❓ Verdict: unknown" >> "$SUMMARY" ;;
+        esac
+        echo "" >> "$SUMMARY"
+        if [ "$SCAN_VERDICT" = "error" ]; then
+          echo "> The scanner could not run properly. This is an environment or configuration problem, NOT a verdict about your website." >> "$SUMMARY"
+          echo "> Run \`reprocase doctor\` to diagnose." >> "$SUMMARY"
+          echo "" >> "$SUMMARY"
+        fi
+        # Findings summary from result.json (if the scan completed)
+        if [ -f reprocase-report/result.json ] && [ "$SCAN_VERDICT" != "error" ]; then
+          node -e "
+            const fs = require('fs');
+            const summaryFile = process.env.SUMMARY;
+            const r = JSON.parse(fs.readFileSync('reprocase-report/result.json', 'utf8'));
+            const s = r.summary;
+            const esc = (v) => String(v || '').replace(/\\n/g, ' ').replace(/\\r/g, '');
+            const safeText = (v, max) => {
+              let s = String(v || '').replace(/[\\n\\r]/g, ' ').trim();
+              if (s.length > max) s = s.slice(0, max) + '…';
+              return s.replace(/\\\\/g, '/').replace(/[&<>\"\\\`]/g, function(c) {
+                return {'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;','\\\`':'&#96;'}[c];
+              });
+            };
+            const obs = r.stats.observationTimeouts || 0;
+            const code = r.stats.pagesVisited || 0;
+            const act = r.stats.actionsPerformed || 0;
+            console.log('| **Pages visited** | ' + code + ' |');
+            console.log('| **Interactions** | ' + act + ' |');
+            console.log('| **Duration** | ' + Math.round((r.stats.durationMs || 0) / 1000) + 's |');
+            console.log('');
+            console.log('### Findings');
+            console.log('');
+            console.log('| Severity | Verified | Suspected |');
+            console.log('|----------|----------|-----------|');
+            for (const sev of ['critical', 'high', 'medium', 'low']) {
+              const v = (r.findings || []).filter(function(f) { return f.severity === sev && f.status === 'verified'; }).length;
+              const sus = (r.findings || []).filter(function(f) { return f.severity === sev && f.status === 'suspected'; }).length;
+              if (v + sus > 0) console.log('| **' + sev + '** | ' + v + ' | ' + sus + ' |');
+            }
+            if (s.verified + s.suspected === 0) {
+              console.log('');
+              console.log('✅ No findings detected.');
+            }
+            if (obs > 0) {
+              console.log('');
+              console.log('> ⏳ ' + obs + ' page(s) had continuous async activity and were not fully observed.');
+            }
+            console.log('');
+            console.log('📊 [View full report](./reprocase-report/report.html) (download the artifact to open offline)');
+          " 2>> /dev/null >> "$SUMMARY" || true
+        fi
+        # Compare results (if baseline was provided)
+        if [ "$HAS_COMPARE" = "true" ] && [ -f reprocase-report/compare/compare.json ]; then
+          echo "" >> "$SUMMARY"
+          echo "---" >> "$SUMMARY"
+          echo "" >> "$SUMMARY"
+          echo "### 📊 Changes vs baseline" >> "$SUMMARY"
+          echo "" >> "$SUMMARY"
+          node -e "
+            const fs = require('fs');
+            const c = JSON.parse(fs.readFileSync('reprocase-report/compare/compare.json', 'utf8'));
+            const s = c.summary;
+            console.log('| | Count |');
+            console.log('|---|---|');
+            console.log('| 🆕 New | ' + s.newCount + ' |');
+            console.log('| ✅ Resolved' + (s.resolvedUnconfirmedCount > 0 ? ' (' + s.resolvedUnconfirmedCount + ' unconfirmed)' : '') + ' | ' + s.resolvedCount + ' |');
+            console.log('| 🔄 Persistent | ' + s.persistentCount + ' |');
+            if (c.coverage && c.coverage.coverageShrunk) {
+              console.log('');
+              console.log('> ⚠️ Coverage shrank: ' + c.coverage.removedPages.length + ' page(s) from the baseline were not revisited.');
+            }
+          " 2>> /dev/null >> "$SUMMARY" || true
+        fi
+        # Gate result
+        echo "" >> "$SUMMARY"
+        echo "---" >> "$SUMMARY"
+        echo "" >> "$SUMMARY"
+        case "$SCAN_VERDICT" in
+          error)
+            echo "**Gate result:** ⛔ scanner error (exit 2) — environment problem" >> "$SUMMARY"
+            ;;
+          findings)
+            if [ "$HAS_COMPARE" = "true" ] && [ -f reprocase-report/compare/compare.json ]; then
+              CMP_EXIT=$(node -e "
+                try { console.log('checked') } catch(e) { console.log('') }
+              " 2>/dev/null)
+              GATE_CONCL="${{ steps.gate.conclusion }}"
+              if [ "$GATE_CONCL" = "failure" ]; then
+                echo "**Gate result:** 🔴 Baseline gate FAILED (new findings detected)" >> "$SUMMARY"
+              else
+                echo "**Gate result:** 🟢 Baseline gate passed" >> "$SUMMARY"
+              fi
+            else
+              echo "**Gate result:** ⚠️ Findings exist at/above threshold (fail-on: \`${{ inputs.fail-on }}\`)" >> "$SUMMARY"
+            fi
+            ;;
+          clean)
+            echo "**Gate result:** 🟢 Clean" >> "$SUMMARY"
+            ;;
+        esac
+        echo "" >> "$SUMMARY"
+        echo "---" >> "$SUMMARY"
+        echo "" >> "$SUMMARY"
+        echo "📄 Report artifact: \`${{ inputs.report-name }}\` (contains report.html, result.json, issues.md, generated-tests/)" >> "$SUMMARY"
+        echo "🔒 Traces and raw screenshots are not included (private evidence)." >> "$SUMMARY"
 
     - name: Publish privacy-stripped report
       if: ${{ always() }}
       shell: bash
       run: |
         set -euo pipefail
-        # Traces record raw network traffic (incl. unredacted URLs) — private
-        # evidence, never uploaded. Screenshots are of YOUR site: keep them,
-        # they belong to you. result.json / report.html / issues.md are
-        # redacted at source (token/session query params).
         if [ -d reprocase-report ]; then
           rm -rf reprocase-report/artifacts/traces
           ls reprocase-report
