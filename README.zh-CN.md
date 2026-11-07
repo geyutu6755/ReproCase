@@ -139,7 +139,7 @@ npm run test:all   # 单元 + 集成（真实浏览器）+ CLI 端到端
 
 ## 状态
 
-v0.5.1 —— GitHub Actions 可靠性修复版本（fail-on-new 语义、退出码顺序、SHA 支持、npm ci）。详见 [变更日志](CHANGELOG.md)。
+v0.6.0 —— 可靠 CI 与开发者反馈版本（引用规范化修复、Job Summary、注入防护）。详见 [变更日志](CHANGELOG.md)。
 [变更日志](CHANGELOG.md)、[测试基线](docs/test-baselines.md) 与[兼容性矩阵](docs/compatibility.md)。
 
 ## 许可证
