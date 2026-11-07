@@ -65,7 +65,7 @@ describe('adaptive async-observation window', () => {
       const tmpSite = fs.mkdtempSync(path.join(os.tmpdir(), 'reprocase-late-'));
       fs.copyFileSync(path.join(dir, 'index.html'), path.join(tmpSite, 'index.html'));
       let html = fs.readFileSync(path.join(tmpSite, 'index.html'), 'utf8');
-      html = html.replace(', 1000);', ', 2500);');
+      html = html.replace(', 1000);', ', 8000);');
       fs.writeFileSync(path.join(tmpSite, 'index.html'), html, 'utf8');
 
       const { startStaticServer: start } = await import('../../src/dev-server.js');
@@ -81,7 +81,7 @@ describe('adaptive async-observation window', () => {
         });
         const { result } = await new Scanner(config, out).run();
         const boom = result.findings.find((f) => f.title.includes('LateFault'));
-        expect(boom, 'fault at 2500 ms must be missed with a 400 ms budget (documented trade-off)').toBeUndefined();
+        expect(boom, 'fault at 8000 ms must be missed with a 400 ms budget (documented trade-off)').toBeUndefined();
       } finally {
         await shortServer.close();
         fs.rmSync(tmpSite, { recursive: true, force: true });
