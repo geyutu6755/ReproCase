@@ -64,7 +64,8 @@ describe('composite action structure (v0.5.1 reliability)', () => {
   it('install step supports SHA checkout with explicit error for missing refs', () => {
     expect(yml).toContain('git checkout');
     expect(yml).toContain('git cat-file');
-    expect(yml).toContain('not found as a tag, branch or commit SHA');
+    expect(yml).toContain('not found as a tag or branch');
+    expect(yml).toContain('not found in geyutu6755/ReproCase');
     expect(yml).toContain('git rev-parse HEAD');
   });
 

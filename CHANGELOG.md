@@ -4,6 +4,41 @@ All notable changes to ReproCase are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.6.0] — 2026-11-08
+
+Reliable CI and developer feedback release. Fixes the default ref normalisation defect from
+v0.5.1 and adds a professional GitHub Actions Job Summary.
+
+### Added
+
+- **GITHUB_STEP_SUMMARY**: professional Markdown summary in the GitHub Actions UI showing
+  target, ReproCase version, findings by severity (verified/suspected), compare results
+  (new/resolved/persistent/unconfirmed), gate result with clear reasoning, report artifact
+  reference, observation timeouts, and coverage-shrink warnings. All scanned-site text is
+  HTML-escaped (no Markdown injection); long values truncated; generated even when the scan
+  fails (if: always()); no external dependencies.
+- **Ref normalisation**: correctly handles `refs/tags/v0.5.1`, `refs/heads/main`, bare tags
+  (`v0.5.1`), bare branches (`main`), and full 40-char commit SHAs. Shell injection and path
+  traversal in the ref are rejected with explicit errors. The checked-out commit is verified
+  to match the requested SHA.
+- **Caller github.ref isolation**: the action uses `github.action_ref` (not the caller's
+  `github.ref`) for the default reprocase-ref, preventing accidental installation of the
+  wrong code.
+- **Action structure tests**: 21 tests covering ref normalisation, Job Summary content,
+  security guards, and artifact privacy.
+
+### Fixed
+
+- **Default ref normalisation** (P0): the v0.5.1 action stripped only `refs/` from the ref,
+  leaving `tags/` in the path for `git clone --branch`. Now all three GitHub ref formats are
+  correctly normalised.
+- **Late-fault test timing**: observation-window budget test now uses an 8000 ms fault delay
+  (beyond page teardown) for reliable budget verification.
+
+### Verification
+
+181/181 tests (72 unit + 109 integration/e2e); npm audit 0; four-OS CI matrix.
+
 ## [0.5.1] — 2026-11-06
 
 GitHub Actions composite-action reliability release. Three real defects found by the
@@ -502,6 +537,7 @@ First verified release.
 - No accessibility, performance, or visual-regression coverage beyond horizontal overflow.
 - Single-browser (Chromium) at this stage; Firefox/WebKit untested.
 
+[0.6.0]: https://github.com/geyutu6755/ReproCase/releases/tag/v0.6.0
 [0.5.1]: https://github.com/geyutu6755/ReproCase/releases/tag/v0.5.1
 [0.5.0]: https://github.com/geyutu6755/ReproCase/releases/tag/v0.5.0
 [0.4.0]: https://github.com/geyutu6755/ReproCase/releases/tag/v0.4.0
