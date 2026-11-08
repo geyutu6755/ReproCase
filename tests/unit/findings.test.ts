@@ -64,6 +64,18 @@ describe('FindingCollector dedupe', () => {
     expect(a.finding.repro.observedCount).toBe(2);
   });
 
+  it('merges resource failures with the same URL but different failure modes (404 vs abort)', () => {
+    // A real browser can observe the same missing resource twice with different
+    // failure shapes (HTTP 404 on one request, net::ERR_ABORTED on a duplicate
+    // request). Same root cause -> one finding, not two.
+    const c = new FindingCollector(true);
+    const a = c.observe(obs({ type: 'resource-load-failure', url: 'http://127.0.0.1:4610/p1.html', evidence: { resourceUrl: 'http://127.0.0.1:4610/app.js', statusCode: 404 } }));
+    const b = c.observe(obs({ type: 'resource-load-failure', url: 'http://127.0.0.1:4610/p2.html', evidence: { resourceUrl: 'http://127.0.0.1:4610/app.js', failureText: 'net::ERR_ABORTED' } }));
+    expect(b.created, 'same resource URL must dedupe regardless of failure mode').toBe(false);
+    expect(a.finding.repro.observedCount).toBe(2);
+    expect(c.list()).toHaveLength(1);
+  });
+
   it('assigns stable ids derived from the fingerprint', () => {
     const c1 = new FindingCollector(true);
     const c2 = new FindingCollector(true);

@@ -426,6 +426,13 @@ export class Scanner {
         }
       }
       if (res.status() < 400) return;
+      // XHR/fetch responses are application-level business states: REST lookups
+      // legitimately return 404/410/etc. and pages handle them (friendly errors,
+      // empty states). Reporting them as resource failures produced false
+      // positives on real sites (v0.7.0 accuracy fix). Network-level failures on
+      // those requests are still captured by the requestfailed listener above.
+      const rt = res.request().resourceType();
+      if (rt === 'xhr' || rt === 'fetch') return;
       const u = res.url();
       if (FAVICON_RE.test(new URL(u, page.url()).pathname)) return;
       if (!this.isFirstParty(u)) return;

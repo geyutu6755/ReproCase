@@ -46,7 +46,11 @@ export function fingerprintOf(obs: ObservationInput, redactQuery: boolean): stri
     case 'page-load-failure':
       return ['page-load-failure', normalizeUrl(obs.targetUrl ?? obs.url), String(e.statusCode ?? norm(e.failureText))].join('|');
     case 'resource-load-failure':
-      return ['resource-load-failure', normalizeUrl(e.resourceUrl ?? ''), String(e.statusCode ?? norm(e.failureText))].join('|');
+      // Key by resource URL only: a real browser can observe the same missing
+      // resource with different failure shapes (HTTP 404 on one request,
+      // net::ERR_ABORTED on a duplicate). Same root cause -> one finding
+      // (v0.7.0 accuracy fix); the title keeps the first-observed detail.
+      return ['resource-load-failure', normalizeUrl(e.resourceUrl ?? '')].join('|');
     case 'broken-internal-link':
       return ['broken-internal-link', normalizeUrl(obs.targetUrl ?? '')].join('|');
     case 'horizontal-overflow':
