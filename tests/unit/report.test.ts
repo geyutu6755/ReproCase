@@ -153,6 +153,13 @@ describe('HTML report', () => {
     expect(html).toContain('<!doctype html>');
   });
 
+  it('provides a noscript fallback pointing at result.json/issues.md', () => {
+    const html = renderHtml(makeResult());
+    expect(html).toContain('<noscript>');
+    expect(html).toContain('result.json');
+    expect(html).toContain('issues.md');
+  });
+
   it('escapes HTML-sensitive characters inside the embedded data', () => {
     const evil = makeFinding({
       title: 'Evil <img src=x onerror=alert(1)> finding',

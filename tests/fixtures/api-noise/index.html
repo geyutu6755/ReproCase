@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>API noise fixture</title></head>
+<body>
+<main>
+  <h1>API noise fixture</h1>
+  <!-- Control: broken image must still be found -->
+  <img src="img/missing.png" alt="broken" width="16" height="16">
+  <p id="plan-status"></p>
+  <script>
+    // Handled business 404: fetch a missing API resource, handle the error.
+    // ReproCase must NOT report this as a resource failure (Fix A).
+    fetch('/api/plan/42').then(function (r) { return r.json(); }).catch(function () {
+      document.getElementById('plan-status').textContent = 'Plan not found (handled)';
+    });
+  </script>
+</main>
+</body>
+</html>

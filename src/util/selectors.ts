@@ -202,8 +202,18 @@ export function collectCandidatesInPage(opts: CandidateOptions): CandidateCollec
     const style = getComputedStyle(node);
     if (style.visibility === 'hidden' || style.display === 'none') continue;
     if (node.hasAttribute('disabled') || node.getAttribute('aria-disabled') === 'true') continue;
-    // Never touch form controls: submitting or mutating forms is out of scope.
-    if (node.closest('form')) continue;
+    // Never touch controls that submit or mutate a form (submit buttons,
+    // inputs, selects, textareas): form submission is out of scope by design.
+    // <button type="button"> and links do neither, so they stay explorable —
+    // the three-tier keyword policy above/below still guards their labels
+    // (v0.7.0: previously ALL form-internal candidates were skipped, which
+    // hid real interaction faults on form-heavy pages).
+    if (node.closest('form')) {
+      const tag = node.tagName;
+      const type = (node.getAttribute('type') || '').toLowerCase();
+      const safe = (tag === 'BUTTON' && type === 'button') || tag === 'A';
+      if (!safe) continue;
+    }
 
     const isHashLink = node.tagName === 'A';
     const text = (node.textContent || '').trim();

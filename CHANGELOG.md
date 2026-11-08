@@ -4,6 +4,55 @@ All notable changes to ReproCase are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.7.0] — 2026-11-08
+
+Real-world reliability & adoption release. Validated against an independent matrix of
+real applications (HTML5 Boilerplate 9.0.1 multi-page site, create-vite React SPA,
+create-vite Vue SPA) with a hand-maintained truth list, and fixed the accuracy defects
+that matrix exposed. Performance verified regression-free against v0.6.0 on the same
+machine (9 / 42 / 102-page sites).
+
+### Fixed
+
+- **Duplicate resource failures merged** (accuracy): a real browser can observe the same
+  missing resource with different failure shapes (HTTP 404 on one request, `net::ERR_ABORTED`
+  on a duplicate). Resource-load-failure fingerprints are now keyed by resource URL, so one
+  root cause produces one finding instead of two.
+- **Handled API responses no longer reported** (accuracy / false positives): first-party
+  `fetch`/XHR responses with 4xx/5xx statuses are application-level business states (REST
+  lookups legitimately return 404 and pages handle them). They are no longer reported as
+  resource-load-failure. Network-level failures on those requests are still reported via the
+  request-failure channel, and broken images/scripts/stylesheets keep their existing coverage.
+- **Safe buttons inside forms are now explored** (coverage): previously ALL form-internal
+  controls were skipped, hiding real interaction faults on form-heavy pages. `<button
+  type="button">` and links inside forms are now candidates; submit buttons, default-type
+  buttons and form inputs remain untouched, and the HARD-dangerous keyword policy
+  (delete / pay / submit / ...) still applies everywhere — verified by a negative test.
+- **`<noscript>` fallback in the HTML report**: JS-disabled browsers now get a pointer to
+  `result.json` and `issues.md` instead of an empty shell.
+
+### Verified
+
+- **Detection accuracy matrix** (truth list maintained alongside the release): 12 planted
+  faults across three real applications — 12/12 detected after the fixes, 0 false positives
+  on 7 control scenarios (mailto, external links, lazy loading, handled business errors,
+  dangerous buttons, hash anchors, clean pages), reproduction 3/3 on every finding.
+- **Dangerous-operation boundary re-audited on v0.7.0**: destructive account/invoice
+  controls inside and outside forms received 0 requests (server-side request log audit).
+- **Performance (same machine, same browser, 2 runs each)**: small 9 pages 33→34.5 s,
+  medium 42 pages 128→130 s, large 102 pages 293→288 s (all within run-to-run noise);
+  memory peak ~130 MB; 0 observation timeouts; report sizes equal.
+- **Stability**: 0 lingering browser processes after normal exit and after Ctrl+C
+  (graceful close, exit code 130); clear error when the output path is not a directory;
+  force-killed scans may briefly orphan the browser process (OS-level, self-exits).
+- **Report at scale**: 200-finding stress render in ~166 ms, search/filter interaction
+  responsive, no mobile-viewport overflow, keyboard reachable.
+
+### Verification
+
+185/185 tests (24 files: unit + real-browser integration + CLI e2e); npm audit 0;
+four-OS CI matrix (ubuntu Node 22/24, macOS, Windows).
+
 ## [0.6.0] — 2026-11-08
 
 Reliable CI and developer feedback release. Fixes the default ref normalisation defect from

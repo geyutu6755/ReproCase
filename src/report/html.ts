@@ -745,6 +745,7 @@ export function renderHtml(result: ScanResult, compare?: CompareResult): string 
   <footer id="footer"></footer>
 </main>
 <div id="lightbox" role="dialog" aria-modal="true" aria-label="Screenshot preview (Escape closes)" tabindex="-1"><img alt="Screenshot preview"></div>
+<noscript><p style="padding:1rem;border:1px solid #b91c1c;color:#b91c1c">This report is interactive and requires JavaScript. The full scan data is available in <code>result.json</code> (machine-readable) and <code>issues.md</code> (plain Markdown) next to this file.</p></noscript>
 <script>window.__REPROCASE_DATA__ = ${jsonForScript(compare ? { ...result, compare } : result)};</script>
 <script>${CLIENT_JS}</script>
 </body>
