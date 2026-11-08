@@ -105,6 +105,9 @@ Full inputs, exit-code semantics and the baseline flow:
 - **No buttons were explored** — check the *Exploration log* section in the report: buttons
   matching risky keywords (pay, delete, run, ...) are skipped by the read-only-first policy.
   Precisely authorize test controls via `exploration.allowSelectors` in the config.
+- **My REST API returns 404 but the page handles it** — ReproCase treats fetch/XHR responses
+  as application-level business states and does not report them as resource failures (network-level
+  request failures on those calls are still reported). Broken images/scripts/stylesheets keep full coverage.
 - **A fault I fixed still shows as "unconfirmed resolved"** — the comparison scan did not visit
   that page. Rerun with the same scope as the baseline, then compare again.
 - **SPA routes show up twice** — a deep link re-renders the app; the same JS fault is reported
@@ -152,15 +155,12 @@ fault through the real Playwright runner.
 
 ## Status
 
-v0.6.0 — reliable CI & developer feedback release (ref normalisation fix, Job Summary, injection guards). See the [changelog](CHANGELOG.md).
-`npm i -g github:…#tag` now works and the quick start drops the manual build), a reconciled
-Node baseline (**22+**, since Node 18/20 are End-of-Life; CI-tested on 22 & 24), the deprecated
-Vitest `poolOptions` config fixed, and refreshed real screenshots. Detection itself is unchanged
-from v0.3.x — cross-page fault clusters, adaptive async observation, shadow DOM + same-origin
-iframe detection, `scan --compare-with`, and the report/attachment security hardening of
-v0.3.2–v0.3.3. See the [changelog](CHANGELOG.md),
-[test baselines](docs/test-baselines.md) and the
-[compatibility matrix](docs/compatibility.md).
+v0.7.0 — real-world reliability release: detection accuracy validated against an independent
+matrix of real applications (HTML5 Boilerplate MPA, create-vite React & Vue SPAs) with a
+hand-maintained truth list; same-root-cause resource failures are no longer double-counted,
+handled API (fetch/XHR) responses are no longer reported as faults, and safe non-submitting
+buttons inside forms are now explored (dangerous-keyword protections unchanged and re-audited).
+Performance verified regression-free vs v0.6.0 on 9/42/102-page sites. See the [changelog](CHANGELOG.md).
 Known limitations are listed in the changelog and in the "Not checked" section of every report.
 
 ## License

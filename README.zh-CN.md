@@ -137,10 +137,13 @@ npm run test:all   # 单元 + 集成（真实浏览器）+ CLI 端到端
 测试套件会扫描内置演示网站，断言四种植入故障全部被检出、干净对照页零误报，
 并且生成的测试能通过真实 Playwright 运行器复现每个故障。
 
-## 状态
+## Status
 
-v0.6.0 —— 可靠 CI 与开发者反馈版本（引用规范化修复、Job Summary、注入防护）。详见 [变更日志](CHANGELOG.md)。
-[变更日志](CHANGELOG.md)、[测试基线](docs/test-baselines.md) 与[兼容性矩阵](docs/compatibility.md)。
+v0.7.0 — 真实项目可靠性版本：在独立真实应用矩阵（HTML5 Boilerplate 多页站、create-vite React/Vue SPA）
+上以人工真值清单验证检测准确性；同根因资源失败不再重复计数、已被页面处理的 API（fetch/XHR）响应不再误报、
+表单内安全的非提交按钮纳入探索（危险关键词保护不变并已复审）。性能经同机对照验证与 v0.6.0 无回归
+（9/42/102 页站点）。详见 [changelog](CHANGELOG.md)。
+已知限制见 changelog 与每份报告的 "Not checked" 部分。
 
 ## 许可证
 
