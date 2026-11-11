@@ -16,7 +16,9 @@ export type Severity = 'critical' | 'high' | 'medium' | 'low';
 
 /**
  * 'verified'  — the fault was reproduced in independent verification runs.
- * 'suspected' — observed once but not proven reproducible (or informational).
+ * 'suspected' — observed but held back by the confidence policy: not yet proven
+ *               reproducible, or reproducible-but-informational (console errors
+ *               may be intentional application logging).
  */
 export type FindingStatus = 'verified' | 'suspected';
 

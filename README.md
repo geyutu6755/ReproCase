@@ -122,6 +122,11 @@ Full inputs, exit-code semantics and the baseline flow:
   risky-looking buttons (pay / delete / submit / send / ...) are never clicked.
 - Hard budgets: max pages, max depth, max actions per page, run timeout, request delay. No infinite crawling.
 - URLs in reports are redacted (token / password / email / session query params masked).
+- **Buttons are judged by their visible text, aria-label, id and name.** A control labelled
+  innocuously (e.g. "Load preview") that secretly issues destructive requests in JavaScript
+  cannot be recognised before the click — scan only sites you own or are authorized to test,
+  and use `exploration.denySelectors` to exclude controls you know are dangerous. Form submit
+  buttons, default-type buttons and inputs are never touched.
 - Traces are captured automatically for localhost targets only. **Traces and screenshots may
   contain unredacted page content, URLs and query parameters — review them before sharing
   this report publicly.**

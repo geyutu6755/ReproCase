@@ -112,6 +112,9 @@ my-report/
 - 只读优先探索：不填表单、不提交、始终关闭对话框、绝不点击危险按钮（支付 / 删除 / 提交 / 发送等）。
 - 硬性预算：最大页面数、最大深度、每页最大交互数、运行超时、请求间隔。不会无限爬取。
 - 报告中的 URL 会脱敏（token / password / email / session 等查询参数被遮蔽）。
+- **按钮按可见文本、aria-label、id 与 name 判定安全性。**文案无危险词（如 "Load preview"）但在
+  JavaScript 中秘密发出破坏性请求的控件，点击前无法识别——只扫描自有或获得授权的站点，并用
+  `exploration.denySelectors` 排除已知危险控件。表单提交按钮、默认类型按钮与输入控件一律不触碰。
 - Trace 仅对 localhost 目标自动采集。**Trace 与截图可能包含未经脱敏的页面内容、URL 和查询参数 —— 公开分享本报告前请先人工审查。**
 
 完整设计见 [docs/architecture.md](docs/architecture.md)。
