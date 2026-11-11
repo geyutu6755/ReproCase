@@ -37,7 +37,10 @@ jobs:
 
       - name: Install Chromium
         # --with-deps installs system libraries; only ubuntu needs it.
-        run: npx playwright install ${{ matrix.os == 'ubuntu-latest' && '--with-deps' || '' }} chromium
+        # One retry: the Playwright CDN occasionally drops connections mid-download.
+        run: |
+          npx playwright install ${{ matrix.os == 'ubuntu-latest' && '--with-deps' || '' }} chromium \
+            || { sleep 30; npx playwright install ${{ matrix.os == 'ubuntu-latest' && '--with-deps' || '' }} chromium; }
 
       - name: Build
         run: npm run build
