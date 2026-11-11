@@ -403,10 +403,18 @@ export class Scanner {
       const u = req.url();
       if (FAVICON_RE.test(new URL(u, page.url()).pathname)) return;
       if (!this.isFirstParty(u)) return;
+      // Client-initiated cancellation of an API request (AbortController,
+      // stale-query cancel, route change) is application behaviour, not a page
+      // fault: SPAs abort in-flight fetches constantly. Only the abort error
+      // code is filtered — real network failures on fetch/XHR (connection
+      // refused, DNS, reset) are still reported (v0.7.1 accuracy fix).
+      const rt = req.resourceType();
+      const err = req.failure()?.errorText ?? '';
+      if ((rt === 'xhr' || rt === 'fetch') && err.includes('ERR_ABORTED')) return;
       void obs({
         type: 'resource-load-failure',
         url: page.url(),
-        evidence: { resourceUrl: u, failureText: req.failure()?.errorText ?? 'request failed' },
+        evidence: { resourceUrl: u, failureText: err || 'request failed' },
         steps: [...stepsBox.steps]
       });
     });

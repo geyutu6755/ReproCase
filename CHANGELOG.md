@@ -4,6 +4,31 @@ All notable changes to ReproCase are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.7.1] — 2026-11-12
+
+Special-audit follow-up to v0.7.0: one accuracy fix found by the A/B/C reverse audit.
+
+### Fixed
+
+- **Client-initiated fetch aborts are no longer reported** (accuracy / false positives):
+  SPAs cancel in-flight API requests constantly (stale queries, route changes, timeouts) via
+  AbortController. The `net::ERR_ABORTED` failure of a cancelled fetch/XHR is application
+  behaviour, not a page fault. Real network failures on fetch/XHR (connection refused, DNS,
+  reset, destroyed sockets) are still reported, and aborted subresources (images, scripts)
+  keep their existing coverage.
+
+### Also
+
+- Corrected the verified/suspected wording in issues.md (suspected covers both
+  not-yet-proven-reproducible and reproducible-but-informational console errors).
+- CI: Chromium install step retries once on CDN connection drops.
+
+### Verification
+
+186/186 tests (25 files) incl. two new regression tests: client abort not reported +
+socket-destroyed fetch still reported; real-site audit scan 9→8 findings with all planted
+scenarios intact; npm audit 0.
+
 ## [0.7.0] — 2026-11-08
 
 Real-world reliability & adoption release. Validated against an independent matrix of
